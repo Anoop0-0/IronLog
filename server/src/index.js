@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000
 
 app.use(cors({ origin:[
     'http://localhost:5173',
-    'https://ironlog.vercel.app',  // we'll update this after Vercel deploys
+    'https://iron-log-delta-dusky.vercel.app',
   ]}))
 app.use(express.json())
 
