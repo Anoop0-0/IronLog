@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 const setSchema=new mongoose.Schema({
     reps:{type:Number,required:true},
     weight:{type:Number,required:true},
-})
+},{_id:false})
 
 const exerciseSchema=new mongoose.Schema({
     name:{type:String,required:true},
     bodyPart:{type:String,required:true},
     notes:{type:String,default:""},
     sets:[setSchema]
-})
+},{_id:false})
 
 const workoutSchema=new mongoose.Schema({
     userId:{type:mongoose.Schema.Types.ObjectId,ref:'User',required:true},
