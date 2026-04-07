@@ -21,9 +21,19 @@ export const logWorkout = async (req, res, next) => {
       return res.status(400).json({ message: 'Add at least one exercise' })
     }
 
+    // convert reps and weight from strings to numbers
+    const cleanedExercises = exercises.map(ex => ({
+      ...ex,
+      sets: ex.sets.map(set => ({
+        ...set,
+        reps:   parseFloat(set.reps)   || 0,
+        weight: parseFloat(set.weight) || 0,
+      }))
+    }))
+
     const workout = await Workout.create({
       userId: req.user._id,
-      exercises,
+      exercises: cleanedExercises,
     })
 
     res.status(201).json(workout)
