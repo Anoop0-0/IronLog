@@ -13,10 +13,19 @@ dotenv.config()
 const app  = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors({ origin:[
+const corsOptions = {
+  origin: [
     'http://localhost:5173',
     'https://iron-log-delta-dusky.vercel.app',
-  ]}))
+    'https://www.anoopbaghel.in',
+    'https://anoopbaghel.in',
+  ],
+  credentials: true,
+}
+
+// Handle preflight OPTIONS requests for all routes
+app.options('*', cors(corsOptions))
+app.use(cors(corsOptions))
 app.use(express.json())
 
 app.use('/api/auth',     authRoutes)
