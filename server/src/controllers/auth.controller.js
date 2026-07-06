@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/User.model.js";
+import { OAuth2Client } from 'google-auth-library'
 
 //helpers
 const generateToken=(userId)=>
@@ -84,5 +85,51 @@ export const login =async(req,res,next)=>{
 
 }
 
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+
+export const googleLogin = async (req, res, next) => {
+  try {
+    const { token } = req.body
+
+    // get user info from Google using access token
+    const response = await fetch(
+      `https://www.googleapis.com/oauth2/v3/userinfo`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    const googleUser = await response.json()
+
+    if (!googleUser.email) {
+      return res.status(400).json({ message: 'Google login failed' })
+    }
+
+    // check if user already exists
+    let user = await User.findOne({ email: googleUser.email })
+
+    if (!user) {
+      // create new user from Google data
+      user = await User.create({
+        username: googleUser.name?.replace(/\s+/g, '_').toLowerCase()
+                  || googleUser.email.split('@')[0],
+        email:    googleUser.email,
+        password: await bcrypt.hash(Math.random().toString(36), 12),
+        googleId: googleUser.sub,
+      })
+    }
+
+    const jwtToken = generateToken(user._id)
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id:       user._id,
+        username: user.username,
+        email:    user.email,
+      }
+    })
+  } catch (err) {
+    next(err)
+  }
+}
         
     

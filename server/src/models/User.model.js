@@ -13,11 +13,15 @@ const userSchema=new mongoose.Schema({
         trim:true,
         lowercase:true
     },
-    password:{
-        type:String,
-        required:true,
-        minlength:6
-    }  
+    password: {
+  type: String,
+  required: false,  
+  minlength: 6,
+}  ,
+    googleId: {
+  type: String,
+  default: null,
+}
 },{timestamps:true})
 
 export default mongoose.model('User',userSchema)
