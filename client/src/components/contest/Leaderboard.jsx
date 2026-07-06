@@ -3,10 +3,10 @@ import { getLeaderboard } from '../../api/contests.api'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
-const daysLeft = (endDate) => {
+const getCountdown = (endDate) => {
   const diff = new Date(endDate) - new Date()
   const days = Math.ceil(diff / 86400000)
-  if (days < 0)  return 'Ended'
+  if (diff <= 0) return 'Ended'
   if (days === 0) return 'Ends today'
   return `${days}d left`
 }
@@ -15,12 +15,20 @@ export default function Leaderboard({ contest, onClose }) {
   const [entries,  setEntries]  = useState([])
   const [loading,  setLoading]  = useState(true)
 
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await getLeaderboard(contest._id || contest.id)
+      setEntries(res.data)
+    } catch {}
+    finally { setLoading(false) }
+  }
+
   useEffect(() => {
-    getLeaderboard(contest.id)
-      .then(res => setEntries(res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [contest.id])
+    fetchLeaderboard()
+    // auto-refresh every 30 seconds
+    const interval = setInterval(fetchLeaderboard, 30000)
+    return () => clearInterval(interval)
+  }, [contest._id])
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
@@ -40,15 +48,18 @@ export default function Leaderboard({ contest, onClose }) {
             </button>
           </div>
 
-          {/* Contest meta */}
           <div className="flex gap-2 mt-3">
             <span className="text-xs bg-gray-800 text-gray-400 px-2.5
                              py-1 rounded-full border border-gray-700">
-              {daysLeft(contest.endDate)}
+              {getCountdown(contest.endDate)}
             </span>
             <span className="text-xs bg-gray-800 text-gray-400 px-2.5
                              py-1 rounded-full border border-gray-700">
               {entries.length} athletes
+            </span>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5
+                             py-1 rounded-full border border-gray-700">
+              🔄 Live
             </span>
           </div>
         </div>
@@ -81,7 +92,6 @@ export default function Leaderboard({ contest, onClose }) {
                           ${i === 0 ? 'bg-yellow-900/10' : ''}`}
             >
               <div className="flex items-center gap-3">
-                {/* Rank */}
                 <span className="text-lg w-8 text-center">
                   {i < 3 ? MEDALS[i] : (
                     <span className="text-sm text-gray-600 font-medium">
@@ -90,28 +100,24 @@ export default function Leaderboard({ contest, onClose }) {
                   )}
                 </span>
 
-                {/* Avatar */}
                 <div className="w-9 h-9 rounded-full bg-gray-800 border
                                 border-gray-700 flex items-center justify-center
                                 text-sm font-medium text-gray-400">
-                  {entry.username[0].toUpperCase()}
+                  {entry.username?.[0]?.toUpperCase()}
                 </div>
 
                 <div>
                   <p className="text-sm font-medium text-white">
                     {entry.username}
                   </p>
-                  <p className="text-xs text-gray-600">
-                    {entry.reps} reps
-                  </p>
+                  <p className="text-xs text-gray-600">{entry.reps} reps</p>
                 </div>
               </div>
 
-              {/* Weight */}
               <div className="text-right">
                 <p className={`text-lg font-bold
                               ${i === 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {entry.weight}kg
+                  {entry.weight > 0 ? `${entry.weight}kg` : '—'}
                 </p>
               </div>
             </div>

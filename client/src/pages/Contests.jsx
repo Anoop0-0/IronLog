@@ -1,26 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppLayout            from '../components/layout/AppLayout'
 import CreateContestModal   from '../components/contest/CreateContestModal'
 import Leaderboard          from '../components/contest/Leaderboard'
 import { useContests }      from '../hooks/useContests'
 import { joinContest }      from '../api/contests.api'
+import { useAuth }          from '../context/AuthContext'
 
-const daysLeft = (endDate) => {
+// countdown timer
+const getCountdown = (endDate) => {
   const diff = new Date(endDate) - new Date()
-  const days = Math.ceil(diff / 86400000)
-  if (days < 0)   return { label: 'Ended',     color: 'text-gray-600' }
-  if (days === 0) return { label: 'Ends today', color: 'text-red-400'  }
-  return           { label: `${days}d left`,    color: 'text-green-400' }
+  if (diff <= 0) return { label: 'Ended', color: 'text-gray-600' }
+  const days  = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  if (days > 0) return { label: `${days}d ${hours}h left`, color: 'text-green-400' }
+  if (hours > 0) return { label: `${hours}h left`, color: 'text-yellow-400' }
+  return { label: 'Ends soon', color: 'text-red-400' }
 }
 
 export default function Contests() {
   const { contests, loading, error, addContest } = useContests()
+  const { user } = useAuth()
 
-  const [createOpen,     setCreateOpen]     = useState(false)
+  const [createOpen,      setCreateOpen]      = useState(false)
   const [selectedContest, setSelectedContest] = useState(null)
-  const [joinCode,       setJoinCode]       = useState('')
-  const [joinLoading,    setJoinLoading]    = useState(false)
-  const [joinError,      setJoinError]      = useState('')
+  const [joinCode,        setJoinCode]        = useState('')
+  const [joinLoading,     setJoinLoading]     = useState(false)
+  const [joinError,       setJoinError]       = useState('')
+  const [copiedId,        setCopiedId]        = useState(null)
+  const [now,             setNow]             = useState(Date.now())
+
+  // update countdown every minute
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleJoin = async () => {
     if (!joinCode.trim()) return
@@ -37,15 +50,27 @@ export default function Contests() {
     }
   }
 
+  const handleCopyCode = (code, id) => {
+    navigator.clipboard.writeText(code)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  // get user's rank in a contest
+  const getUserRank = (contest) => {
+    if (!contest.participants || !user) return null
+    const sorted = [...contest.participants].sort((a, b) => b.weight - a.weight)
+    const rank = sorted.findIndex(p => p.userId === user.id || p.userId === user._id) + 1
+    return rank > 0 ? rank : null
+  }
+
   return (
     <AppLayout>
       {/* Header */}
       <div className="flex justify-between items-center px-4 pt-10 pb-4">
         <div>
           <h1 className="text-xl font-bold text-white">Contests</h1>
-          <p className="text-xs text-gray-600 mt-0.5">
-            Compete with friends
-          </p>
+          <p className="text-xs text-gray-600 mt-0.5">Compete with friends</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
@@ -63,10 +88,7 @@ export default function Contests() {
           <div className="flex gap-2">
             <input
               value={joinCode}
-              onChange={e => {
-                setJoinCode(e.target.value.toUpperCase())
-                setJoinError('')
-              }}
+              onChange={e => { setJoinCode(e.target.value.toUpperCase()); setJoinError('') }}
               placeholder="e.g. AB12CD"
               maxLength={6}
               className="flex-1 bg-gray-800 border border-gray-700 rounded-xl
@@ -83,9 +105,7 @@ export default function Contests() {
               {joinLoading ? '...' : 'Join'}
             </button>
           </div>
-          {joinError && (
-            <p className="text-red-400 text-xs mt-2">{joinError}</p>
-          )}
+          {joinError && <p className="text-red-400 text-xs mt-2">{joinError}</p>}
         </div>
       </div>
 
@@ -99,17 +119,14 @@ export default function Contests() {
         {loading && (
           <div className="space-y-3">
             {[1,2].map(i => (
-              <div key={i}
-                className="h-24 bg-gray-900 rounded-xl animate-pulse"/>
+              <div key={i} className="h-32 bg-gray-900 rounded-xl animate-pulse"/>
             ))}
           </div>
         )}
 
         {error && (
           <div className="bg-red-900/20 border border-red-800 rounded-xl
-                          p-4 text-red-400 text-sm">
-            {error}
-          </div>
+                          p-4 text-red-400 text-sm">{error}</div>
         )}
 
         {!loading && !error && contests.length === 0 && (
@@ -125,16 +142,16 @@ export default function Contests() {
         {!loading && !error && (
           <div className="space-y-3">
             {contests.map(contest => {
-              const { label, color } = daysLeft(contest.endDate)
+              const { label, color } = getCountdown(contest.endDate)
+              const rank = getUserRank(contest)
+
               return (
-                <button
-                  key={contest.id}
-                  onClick={() => setSelectedContest(contest)}
-                  className="w-full bg-gray-900 border border-gray-800
-                             rounded-xl p-4 text-left active:border-gray-600
-                             transition-colors"
+                <div
+                  key={contest._id || contest.id}
+                  className="bg-gray-900 border border-gray-800 rounded-xl p-4"
                 >
-                  <div className="flex justify-between items-start">
+                  {/* Top row — name + countdown */}
+                  <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="font-semibold text-white text-sm">
                         {contest.name}
@@ -148,7 +165,23 @@ export default function Contests() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3 mt-3">
+                  {/* Middle row — rank badge + participants */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {rank && (
+                      <div className={`flex items-center gap-1.5 px-2.5 py-1
+                                      rounded-full text-xs font-semibold border
+                                      ${rank === 1
+                                        ? 'bg-yellow-900/30 text-yellow-400 border-yellow-900'
+                                        : rank === 2
+                                        ? 'bg-gray-700/50 text-gray-300 border-gray-600'
+                                        : rank === 3
+                                        ? 'bg-orange-900/30 text-orange-400 border-orange-900'
+                                        : 'bg-gray-800 text-gray-500 border-gray-700'}`}>
+                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+                        <span>Your rank</span>
+                      </div>
+                    )}
+
                     {/* Participant avatars */}
                     <div className="flex -space-x-2">
                       {(contest.participants || []).slice(0, 4).map((p, i) => (
@@ -158,18 +191,42 @@ export default function Contests() {
                                      border-gray-900 flex items-center justify-center
                                      text-xs text-gray-400 font-medium"
                         >
-                          {p.username[0].toUpperCase()}
+                          {p.username?.[0]?.toUpperCase()}
                         </div>
                       ))}
                     </div>
                     <span className="text-xs text-gray-600">
                       {(contest.participants || []).length} athletes
                     </span>
-                    <span className="ml-auto text-xs text-gray-600">
-                      View leaderboard →
-                    </span>
                   </div>
-                </button>
+
+                  {/* Bottom row — invite code + leaderboard button */}
+                  <div className="flex items-center justify-between pt-3
+                                  border-t border-gray-800">
+                    {/* Invite code */}
+                    <button
+                      onClick={() => handleCopyCode(contest.inviteCode, contest._id)}
+                      className="flex items-center gap-2 active:scale-95 transition-all"
+                    >
+                      <span className="font-mono text-sm font-bold text-gray-400
+                                       tracking-widest">
+                        {contest.inviteCode}
+                      </span>
+                      <span className="text-xs text-gray-600">
+                        {copiedId === contest._id ? '✓ Copied' : 'Copy code'}
+                      </span>
+                    </button>
+
+                    {/* Leaderboard button */}
+                    <button
+                      onClick={() => setSelectedContest(contest)}
+                      className="text-xs text-red-400 font-medium
+                                 active:text-red-300 transition-colors"
+                    >
+                      Leaderboard →
+                    </button>
+                  </div>
+                </div>
               )
             })}
           </div>
