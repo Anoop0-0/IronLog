@@ -23,10 +23,15 @@ const corsOptions = {
   credentials: true,
 }
 
-// Handle preflight OPTIONS requests for all routes
 app.options('*any', cors(corsOptions))
 app.use(cors(corsOptions))
 app.use(express.json())
+
+// fix Google OAuth popup
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+  next()
+})
 
 app.use('/api/auth',     authRoutes)
 app.use('/api/workouts', workoutRoutes)
