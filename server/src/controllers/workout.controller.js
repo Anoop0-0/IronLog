@@ -96,3 +96,35 @@ export const deleteWorkout = async (req, res, next) => {
     next(err)
   }
 }
+
+// ── update a workout ──────────────────────────────────
+export const updateWorkout = async (req, res, next) => {
+  try {
+    const workout = await Workout.findById(req.params.id)
+
+    if (!workout) {
+      return res.status(404).json({ message: 'Workout not found' })
+    }
+
+    if (workout.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    const { exercises } = req.body
+
+    const cleanedExercises = exercises.map(ex => ({
+      ...ex,
+      sets: ex.sets.map(set => ({
+        reps:   parseFloat(set.reps)   || 0,
+        weight: parseFloat(set.weight) || 0,
+      }))
+    }))
+
+    workout.exercises = cleanedExercises
+    await workout.save()
+
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}

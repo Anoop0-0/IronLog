@@ -9,5 +9,5 @@ router.use(protect)
 router.get('/',       getWorkouts)
 router.post('/',      logWorkout)
 router.delete('/:id', deleteWorkout)
-
+router.put('/:id', updateWorkout)
 export default router

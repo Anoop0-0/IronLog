@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getWorkouts } from '../api/workouts.api'
+import { getWorkouts, deleteWorkout as deleteWorkoutAPI, updateWorkout as updateWorkoutAPI } from '../api/workouts.api'
 
 export function useWorkouts() {
   const [workouts, setWorkouts] = useState([])
@@ -20,5 +20,11 @@ export function useWorkouts() {
     fetch()
   }, [])
 
-  return { workouts, loading, error }
+  const removeWorkout = (id) =>
+    setWorkouts(prev => prev.filter(w => w._id !== id))
+
+  const replaceWorkout = (updated) =>
+    setWorkouts(prev => prev.map(w => w._id === updated._id ? updated : w))
+
+  return { workouts, loading, error, removeWorkout, replaceWorkout }
 }

@@ -1,10 +1,10 @@
 import { useAuth }      from '../context/AuthContext'
 import { useWorkouts }  from '../hooks/useWorkouts'
 import AppLayout        from '../components/layout/AppLayout'
-import WorkoutCard      from '../components/workout/Workoutcard'
+import WorkoutCard      from '../components/workout/WorkoutCard'
 import { useNavigate }  from 'react-router-dom'
+import { deleteWorkout, updateWorkout } from '../api/workouts.api'
 
-// Skeleton card shown while loading
 function SkeletonCard() {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3 animate-pulse">
@@ -17,9 +17,24 @@ function SkeletonCard() {
 }
 
 export default function Dashboard() {
-  const { user, logout }              = useAuth()
-  const { workouts, loading, error }  = useWorkouts()
-  const navigate                      = useNavigate()
+  const { user, logout }                          = useAuth()
+  const { workouts, loading, error,
+          removeWorkout, replaceWorkout }          = useWorkouts()
+  const navigate                                  = useNavigate()
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteWorkout(id)
+      removeWorkout(id)
+    } catch {}
+  }
+
+  const handleUpdate = async (id, exercises) => {
+    try {
+      const res = await updateWorkout(id, { exercises })
+      replaceWorkout(res.data)
+    } catch {}
+  }
 
   return (
     <AppLayout>
@@ -56,7 +71,6 @@ export default function Dashboard() {
           Recent workouts
         </h2>
 
-        {/* Loading state */}
         {loading && (
           <div className="space-y-3">
             <SkeletonCard />
@@ -65,14 +79,12 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Error state */}
         {error && (
           <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
             {error}
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && !error && workouts.length === 0 && (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">🏋️</p>
@@ -83,11 +95,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Workout list */}
         {!loading && !error && workouts.length > 0 && (
           <div className="space-y-3">
             {workouts.map(workout => (
-              <WorkoutCard key={workout.id} workout={workout} />
+              <WorkoutCard
+                key={workout._id}
+                workout={workout}
+                onDelete={() => handleDelete(workout._id)}
+                onUpdate={(exercises) => handleUpdate(workout._id, exercises)}
+              />
             ))}
           </div>
         )}
