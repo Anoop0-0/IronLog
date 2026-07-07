@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getLeaderboard } from '../../api/contests.api'
+import { getLeaderboard, logLift } from '../../api/contests.api'
+import { useAuth } from '../../context/AuthContext'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
@@ -11,9 +12,20 @@ const getCountdown = (endDate) => {
   return `${days}d left`
 }
 
+const isActive = (contest) => {
+  const now = new Date()
+  return now >= new Date(contest.startDate) && now <= new Date(contest.endDate)
+}
+
 export default function Leaderboard({ contest, onClose }) {
-  const [entries,  setEntries]  = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const { user }                      = useAuth()
+  const [entries,  setEntries]        = useState([])
+  const [loading,  setLoading]        = useState(true)
+  const [showForm, setShowForm]       = useState(false)
+  const [weight,   setWeight]         = useState('')
+  const [reps,     setReps]           = useState('')
+  const [submitting, setSubmitting]   = useState(false)
+  const [message,  setMessage]        = useState('')
 
   const fetchLeaderboard = async () => {
     try {
@@ -25,14 +37,43 @@ export default function Leaderboard({ contest, onClose }) {
 
   useEffect(() => {
     fetchLeaderboard()
-    // auto-refresh every 30 seconds
     const interval = setInterval(fetchLeaderboard, 30000)
     return () => clearInterval(interval)
   }, [contest._id])
 
+  const handleLogLift = async () => {
+    if (!weight || !reps) return
+    setSubmitting(true)
+    setMessage('')
+    try {
+      const res = await logLift(contest._id || contest.id, {
+        weight: parseFloat(weight),
+        reps:   parseFloat(reps),
+      })
+      if (res.data.updated) {
+        setMessage(`✅ New PR! ${weight}kg × ${reps} reps saved`)
+        await fetchLeaderboard()
+        setWeight('')
+        setReps('')
+        setShowForm(false)
+      } else {
+        setMessage(`Current best is already heavier — keep pushing!`)
+      }
+    } catch {
+      setMessage('Failed to log lift. Try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // find current user's entry
+  const myEntry = entries.find(
+    e => e.userId === user?.id || e.userId === user?._id
+  )
+
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
-      <div className="bg-gray-900 rounded-t-2xl max-h-[85vh] flex flex-col">
+      <div className="bg-gray-900 rounded-t-2xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-800">
@@ -62,7 +103,98 @@ export default function Leaderboard({ contest, onClose }) {
               🔄 Live
             </span>
           </div>
+
+          {/* Your current best */}
+          {myEntry && myEntry.weight > 0 && (
+            <div className="mt-3 bg-gray-800 rounded-xl px-3 py-2
+                            flex justify-between items-center">
+              <span className="text-xs text-gray-500">Your best</span>
+              <span className="text-sm font-bold text-red-400">
+                {myEntry.weight}kg × {myEntry.reps} reps
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Log lift form */}
+        {isActive(contest) && (
+          <div className="px-4 py-3 border-b border-gray-800">
+            {!showForm ? (
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full bg-red-600 text-white font-semibold
+                           py-3 rounded-xl text-sm active:scale-95 transition-all"
+              >
+                + Log your lift
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 font-medium">
+                  {contest.exercise} — log your best single lift
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Weight (kg)
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="e.g. 100"
+                      value={weight}
+                      onChange={e => setWeight(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700
+                                 rounded-xl px-3 py-2.5 text-sm text-white
+                                 text-center outline-none focus:border-red-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Reps
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="e.g. 5"
+                      value={reps}
+                      onChange={e => setReps(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700
+                                 rounded-xl px-3 py-2.5 text-sm text-white
+                                 text-center outline-none focus:border-red-700"
+                    />
+                  </div>
+                </div>
+
+                {message && (
+                  <p className={`text-xs text-center ${
+                    message.includes('✅') ? 'text-green-400' : 'text-gray-500'
+                  }`}>
+                    {message}
+                  </p>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowForm(false); setMessage('') }}
+                    className="flex-1 bg-gray-800 text-gray-400 py-2.5
+                               rounded-xl text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLogLift}
+                    disabled={submitting || !weight || !reps}
+                    className="flex-1 bg-red-600 disabled:opacity-40
+                               text-white font-semibold py-2.5 rounded-xl
+                               text-sm active:scale-95 transition-all"
+                  >
+                    {submitting ? 'Saving...' : 'Submit lift'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Leaderboard list */}
         <div className="overflow-y-auto pb-8">
@@ -79,49 +211,60 @@ export default function Leaderboard({ contest, onClose }) {
             <div className="text-center py-16">
               <p className="text-gray-600 text-sm">No entries yet</p>
               <p className="text-gray-700 text-xs mt-1">
-                Log a {contest.exercise} workout to appear here
+                Be the first to log a lift
               </p>
             </div>
           )}
 
-          {!loading && entries.map((entry, i) => (
-            <div
-              key={entry.userId}
-              className={`flex items-center justify-between px-4 py-3.5
-                          border-b border-gray-800
-                          ${i === 0 ? 'bg-yellow-900/10' : ''}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg w-8 text-center">
-                  {i < 3 ? MEDALS[i] : (
-                    <span className="text-sm text-gray-600 font-medium">
-                      {i + 1}
-                    </span>
-                  )}
-                </span>
+          {!loading && entries.map((entry, i) => {
+            const isMe = entry.userId === user?.id ||
+                         entry.userId === user?._id
 
-                <div className="w-9 h-9 rounded-full bg-gray-800 border
-                                border-gray-700 flex items-center justify-center
-                                text-sm font-medium text-gray-400">
-                  {entry.username?.[0]?.toUpperCase()}
+            return (
+              <div
+                key={entry.userId}
+                className={`flex items-center justify-between px-4 py-3.5
+                            border-b border-gray-800
+                            ${i === 0 ? 'bg-yellow-900/10' : ''}
+                            ${isMe ? 'border-l-2 border-l-red-600' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg w-8 text-center">
+                    {i < 3 ? MEDALS[i] : (
+                      <span className="text-sm text-gray-600 font-medium">
+                        {i + 1}
+                      </span>
+                    )}
+                  </span>
+
+                  <div className={`w-9 h-9 rounded-full border
+                                  flex items-center justify-center
+                                  text-sm font-medium
+                                  ${isMe
+                                    ? 'bg-red-900/30 border-red-700 text-red-400'
+                                    : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
+                    {entry.username?.[0]?.toUpperCase()}
+                  </div>
+
+                  <div>
+                    <p className={`text-sm font-medium ${isMe ? 'text-red-400' : 'text-white'}`}>
+                      {entry.username} {isMe && '(you)'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {entry.reps > 0 ? `${entry.reps} reps` : 'No lift yet'}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    {entry.username}
+                <div className="text-right">
+                  <p className={`text-lg font-bold
+                                ${i === 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {entry.weight > 0 ? `${entry.weight}kg` : '—'}
                   </p>
-                  <p className="text-xs text-gray-600">{entry.reps} reps</p>
                 </div>
               </div>
-
-              <div className="text-right">
-                <p className={`text-lg font-bold
-                              ${i === 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {entry.weight > 0 ? `${entry.weight}kg` : '—'}
-                </p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
