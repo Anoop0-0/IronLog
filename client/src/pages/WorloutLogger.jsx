@@ -7,6 +7,7 @@ import {
   newExercise, addSet, deleteSet,
   updateSet, updateNotes, deleteExercise
 } from '../utils/workoutHelpers'
+import { useTimer } from '../context/TimerContext'
 
 export default function WorkoutLogger() {
   const [exercises,    setExercises]    = useState([])
@@ -15,6 +16,7 @@ export default function WorkoutLogger() {
   const [submitting,   setSubmitting]   = useState(false)
   const [error,        setError]        = useState('')
   const navigate = useNavigate()
+  const { startRestTimer } = useTimer()
 
   // ── exercise actions ─────────────────────────────
   const handleAddExercise = (name, bodyPart) => {
@@ -28,6 +30,7 @@ export default function WorkoutLogger() {
   // ── set actions ───────────────────────────────────
   const handleAddSet = (exId) => {
     setExercises(prev => addSet(prev, exId))
+    startRestTimer()
   }
 
   const handleDeleteSet = (exId, setId) => {
@@ -60,6 +63,7 @@ export default function WorkoutLogger() {
       setSubmitting(false)
     }
   }
+  
 
   return (
     <AppLayout>
