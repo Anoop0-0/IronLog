@@ -177,7 +177,7 @@ export default function CreateContestModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        <div className="h-6" />
+        <div className="h-24" />
       </div>
     </div>
   )

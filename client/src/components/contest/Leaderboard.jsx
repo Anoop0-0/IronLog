@@ -197,7 +197,7 @@ export default function Leaderboard({ contest, onClose }) {
         )}
 
         {/* Leaderboard list */}
-        <div className="overflow-y-auto pb-8">
+        <div className="overflow-y-auto pb-24">
           {loading && (
             <div className="space-y-2 p-4">
               {[1,2,3].map(i => (
