@@ -1,5 +1,6 @@
 import { BrowserRouter,Routes,Route } from 'react-router-dom'
 import ProtectedRoutes from './components/layout/ProtetctedRoutes'
+import RestTimer from './components/ui/RestTimer'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import WorkoutLogger from './pages/WorloutLogger'
@@ -12,6 +13,7 @@ function App() {
   return (
     <>
     <BrowserRouter>
+    <RestTimer />
     <Routes>
       <Route path='/' element={<Landing/>}/>
       <Route path='/dashboard' element={<ProtectedRoutes><Dashboard/></ProtectedRoutes>}/>
