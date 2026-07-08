@@ -128,3 +128,87 @@ export const updateWorkout = async (req, res, next) => {
     next(err)
   }
 }
+export const addSetToToday = async (req, res, next) => {
+  try {
+    const { exerciseName, bodyPart, notes, set } = req.body
+
+    if (!exerciseName || !set || !set.reps || !set.weight) {
+      return res.status(400).json({ message: 'Exercise name, reps and weight required' })
+    }
+
+    // get start of today
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    // get end of today
+    const endOfDay = new Date()
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const cleanSet = {
+      reps:   parseFloat(set.reps)   || 0,
+      weight: parseFloat(set.weight) || 0,
+    }
+
+    // find today's workout
+    let workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    })
+
+    if (!workout) {
+      // create new workout for today
+      workout = await Workout.create({
+        userId: req.user._id,
+        exercises: [{
+          name:     exerciseName,
+          bodyPart: bodyPart || '',
+          notes:    notes    || '',
+          sets:     [cleanSet],
+        }]
+      })
+    } else {
+      // find if exercise already exists in today's workout
+      const existingEx = workout.exercises.find(
+        ex => ex.name === exerciseName
+      )
+
+      if (existingEx) {
+        // add set to existing exercise
+        existingEx.sets.push(cleanSet)
+      } else {
+        // add new exercise with this set
+        workout.exercises.push({
+          name:     exerciseName,
+          bodyPart: bodyPart || '',
+          notes:    notes    || '',
+          sets:     [cleanSet],
+        })
+      }
+      await workout.save()
+    }
+
+    // auto-update contest scores
+    const activeContests = await Contest.find({
+      'participants.userId': req.user._id,
+      endDate:   { $gte: new Date() },
+      startDate: { $lte: new Date() },
+    })
+
+    for (const contest of activeContests) {
+      if (contest.exercise === exerciseName) {
+        const participant = contest.participants.find(
+          p => p.userId.toString() === req.user._id.toString()
+        )
+        if (participant && cleanSet.weight > participant.weight) {
+          participant.weight = cleanSet.weight
+          participant.reps   = cleanSet.reps
+          await contest.save()
+        }
+      }
+    }
+
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}
