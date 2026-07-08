@@ -1,15 +1,60 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
-import { addSetToToday } from '../api/workouts.api'
+import { addSetToToday, getWorkouts } from '../api/workouts.api'
 import { useTimer }    from '../context/TimerContext'
-import { newExercise, newSet } from '../utils/workoutHelpers'
+import { newSet }      from '../utils/workoutHelpers'
+import { nanoid }      from 'nanoid'
+
+const newExercise = (name, bodyPart) => ({
+  id:       nanoid(),
+  name,
+  bodyPart,
+  notes:    '',
+  sets:     [newSet()],
+})
 
 export default function WorkoutLogger() {
-  const [exercises,   setExercises]   = useState([])
-  const [pickerOpen,  setPickerOpen]  = useState(false)
+  const [exercises,    setExercises]    = useState([])
+  const [pickerOpen,   setPickerOpen]   = useState(false)
   const [expandedNote, setExpandedNote] = useState(null)
   const { startRestTimer } = useTimer()
+
+  // load today's workout on mount
+  useEffect(() => {
+    const loadToday = async () => {
+      try {
+        const res = await getWorkouts()
+        const workouts = res.data
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const todayWorkout = workouts.find(w => {
+          const d = new Date(w.createdAt)
+          d.setHours(0, 0, 0, 0)
+          return d.getTime() === today.getTime()
+        })
+
+        if (todayWorkout) {
+          setExercises(todayWorkout.exercises.map(ex => ({
+            id:       ex._id || nanoid(),
+            name:     ex.name,
+            bodyPart: ex.bodyPart,
+            notes:    ex.notes || '',
+            sets:     ex.sets.map(s => ({
+              id:      s._id || nanoid(),
+              reps:    s.reps,
+              weight:  s.weight,
+              saved:   true,
+              editing: false,
+            }))
+          })))
+        }
+      } catch {}
+    }
+    loadToday()
+  }, [])
 
   const handleAddExercise = (name, bodyPart) => {
     setExercises(prev => [...prev, newExercise(name, bodyPart)])
@@ -55,49 +100,48 @@ export default function WorkoutLogger() {
   }
 
   const handleEditSet = (exId, setId) => {
-  setExercises(prev => prev.map(ex =>
-    ex.id === exId
-      ? {
-          ...ex,
-          sets: ex.sets.map(s =>
-            s.id === setId ? { ...s, editing: true, saved: false } : s
-          )
-        }
-      : ex
-  ))
-}
-
-  // save a single set immediately
-  const handleSaveSet = async (exercise, set) => {
-  if (!set.reps || !set.weight) return
-
-  try {
-    await addSetToToday({
-      exerciseName: exercise.name,
-      bodyPart:     exercise.bodyPart,
-      notes:        exercise.notes,
-      set:          { reps: set.reps, weight: set.weight },
-    })
-
     setExercises(prev => prev.map(ex =>
-      ex.id === exercise.id
+      ex.id === exId
         ? {
             ...ex,
             sets: ex.sets.map(s =>
-              s.id === set.id
-                ? { ...s, saved: true, editing: false }
-                : s
+              s.id === setId ? { ...s, editing: true, saved: false } : s
             )
           }
         : ex
     ))
+  }
 
-    startRestTimer()
-  } catch {}
-}
+  const handleSaveSet = async (exercise, set) => {
+    if (!set.reps || !set.weight) return
+
+    try {
+      await addSetToToday({
+        exerciseName: exercise.name,
+        bodyPart:     exercise.bodyPart,
+        notes:        exercise.notes,
+        set:          { reps: set.reps, weight: set.weight },
+      })
+
+      setExercises(prev => prev.map(ex =>
+        ex.id === exercise.id
+          ? {
+              ...ex,
+              sets: ex.sets.map(s =>
+                s.id === set.id
+                  ? { ...s, saved: true, editing: false }
+                  : s
+              )
+            }
+          : ex
+      ))
+
+      startRestTimer()
+    } catch {}
+  }
+
   return (
     <AppLayout>
-      {/* Header */}
       <div className="px-4 pt-10 pb-4">
         <h1 className="text-xl font-bold text-white">Log workout</h1>
         <p className="text-xs text-gray-600 mt-0.5">
@@ -107,7 +151,6 @@ export default function WorkoutLogger() {
         </p>
       </div>
 
-      {/* Exercise cards */}
       <div className="px-4 space-y-4">
         {exercises.length === 0 && (
           <div className="text-center py-16">
@@ -120,24 +163,24 @@ export default function WorkoutLogger() {
         )}
 
         {exercises.map(ex => (
-  <ExerciseCard
-    key={ex.id}
-    exercise={ex}
-    noteOpen={expandedNote === ex.id}
-    onToggleNote={() =>
-      setExpandedNote(prev => prev === ex.id ? null : ex.id)
-    }
-    onDeleteExercise={() => handleDeleteExercise(ex.id)}
-    onAddSet={() => handleAddSet(ex.id)}
-    onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
-    onUpdateSet={(setId, field, val) =>
-      handleUpdateSet(ex.id, setId, field, val)
-    }
-    onNoteChange={(val) => handleNotes(ex.id, val)}
-    onSaveSet={(set) => handleSaveSet(ex, set)}
-    onEditSet={(setId) => handleEditSet(ex.id, setId)}
-  />
-))}
+          <ExerciseCard
+            key={ex.id}
+            exercise={ex}
+            noteOpen={expandedNote === ex.id}
+            onToggleNote={() =>
+              setExpandedNote(prev => prev === ex.id ? null : ex.id)
+            }
+            onDeleteExercise={() => handleDeleteExercise(ex.id)}
+            onAddSet={() => handleAddSet(ex.id)}
+            onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
+            onUpdateSet={(setId, field, val) =>
+              handleUpdateSet(ex.id, setId, field, val)
+            }
+            onNoteChange={(val) => handleNotes(ex.id, val)}
+            onSaveSet={(set) => handleSaveSet(ex, set)}
+            onEditSet={(setId) => handleEditSet(ex.id, setId)}
+          />
+        ))}
 
         <button
           onClick={() => setPickerOpen(true)}
@@ -158,7 +201,6 @@ export default function WorkoutLogger() {
     </AppLayout>
   )
 }
-
 
 function ExerciseCard({
   exercise, noteOpen,
