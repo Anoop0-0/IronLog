@@ -138,7 +138,7 @@ export default function RestTimer() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full
+        className={`fixed bottom-28 right-4 z-40 w-14 h-14 rounded-full
                     shadow-lg flex items-center justify-center
                     transition-all active:scale-95
                     ${running
