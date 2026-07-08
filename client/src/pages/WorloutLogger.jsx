@@ -54,36 +54,47 @@ export default function WorkoutLogger() {
     ))
   }
 
+  const handleEditSet = (exId, setId) => {
+  setExercises(prev => prev.map(ex =>
+    ex.id === exId
+      ? {
+          ...ex,
+          sets: ex.sets.map(s =>
+            s.id === setId ? { ...s, editing: true, saved: false } : s
+          )
+        }
+      : ex
+  ))
+}
+
   // save a single set immediately
   const handleSaveSet = async (exercise, set) => {
-    if (!set.reps || !set.weight) return
+  if (!set.reps || !set.weight) return
 
-    try {
-      await addSetToToday({
-        exerciseName: exercise.name,
-        bodyPart:     exercise.bodyPart,
-        notes:        exercise.notes,
-        set:          { reps: set.reps, weight: set.weight },
-      })
+  try {
+    await addSetToToday({
+      exerciseName: exercise.name,
+      bodyPart:     exercise.bodyPart,
+      notes:        exercise.notes,
+      set:          { reps: set.reps, weight: set.weight },
+    })
 
-      // mark set as saved
-      setExercises(prev => prev.map(ex =>
-        ex.id === exercise.id
-          ? {
-              ...ex,
-              sets: ex.sets.map(s =>
-                s.id === set.id ? { ...s, saved: true } : s
-              )
-            }
-          : ex
-      ))
+    setExercises(prev => prev.map(ex =>
+      ex.id === exercise.id
+        ? {
+            ...ex,
+            sets: ex.sets.map(s =>
+              s.id === set.id
+                ? { ...s, saved: true, editing: false }
+                : s
+            )
+          }
+        : ex
+    ))
 
-      startRestTimer()
-    } catch {
-      // silently fail — user can retry
-    }
-  }
-
+    startRestTimer()
+  } catch {}
+}
   return (
     <AppLayout>
       {/* Header */}
@@ -109,23 +120,24 @@ export default function WorkoutLogger() {
         )}
 
         {exercises.map(ex => (
-          <ExerciseCard
-            key={ex.id}
-            exercise={ex}
-            noteOpen={expandedNote === ex.id}
-            onToggleNote={() =>
-              setExpandedNote(prev => prev === ex.id ? null : ex.id)
-            }
-            onDeleteExercise={() => handleDeleteExercise(ex.id)}
-            onAddSet={() => handleAddSet(ex.id)}
-            onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
-            onUpdateSet={(setId, field, val) =>
-              handleUpdateSet(ex.id, setId, field, val)
-            }
-            onNoteChange={(val) => handleNotes(ex.id, val)}
-            onSaveSet={(set) => handleSaveSet(ex, set)}
-          />
-        ))}
+  <ExerciseCard
+    key={ex.id}
+    exercise={ex}
+    noteOpen={expandedNote === ex.id}
+    onToggleNote={() =>
+      setExpandedNote(prev => prev === ex.id ? null : ex.id)
+    }
+    onDeleteExercise={() => handleDeleteExercise(ex.id)}
+    onAddSet={() => handleAddSet(ex.id)}
+    onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
+    onUpdateSet={(setId, field, val) =>
+      handleUpdateSet(ex.id, setId, field, val)
+    }
+    onNoteChange={(val) => handleNotes(ex.id, val)}
+    onSaveSet={(set) => handleSaveSet(ex, set)}
+    onEditSet={(setId) => handleEditSet(ex.id, setId)}
+  />
+))}
 
         <button
           onClick={() => setPickerOpen(true)}
@@ -147,12 +159,13 @@ export default function WorkoutLogger() {
   )
 }
 
-// ExerciseCard — same as before but with save button per set
+
 function ExerciseCard({
   exercise, noteOpen,
   onToggleNote, onDeleteExercise,
   onAddSet, onDeleteSet,
-  onUpdateSet, onNoteChange, onSaveSet
+  onUpdateSet, onNoteChange,
+  onSaveSet, onEditSet
 }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -217,10 +230,10 @@ function ExerciseCard({
               placeholder="0"
               value={set.reps}
               onChange={e => onUpdateSet(set.id, 'reps', e.target.value)}
-              disabled={set.saved}
+              disabled={set.saved && !set.editing}
               className={`col-span-4 border rounded-lg px-2 py-2 text-sm
                           text-white text-center outline-none
-                          ${set.saved
+                          ${set.saved && !set.editing
                             ? 'bg-gray-800/50 border-gray-800 text-gray-500'
                             : 'bg-gray-800 border-gray-700 focus:border-red-700'}`}
             />
@@ -231,10 +244,10 @@ function ExerciseCard({
               placeholder="0"
               value={set.weight}
               onChange={e => onUpdateSet(set.id, 'weight', e.target.value)}
-              disabled={set.saved}
+              disabled={set.saved && !set.editing}
               className={`col-span-4 border rounded-lg px-2 py-2 text-sm
                           text-white text-center outline-none
-                          ${set.saved
+                          ${set.saved && !set.editing
                             ? 'bg-gray-800/50 border-gray-800 text-gray-500'
                             : 'bg-gray-800 border-gray-700 focus:border-red-700'}`}
             />
@@ -242,7 +255,6 @@ function ExerciseCard({
             <div className="col-span-3 flex justify-end gap-1">
               {!set.saved ? (
                 <>
-                  {/* Save button */}
                   <button
                     onClick={() => onSaveSet(set)}
                     disabled={!set.reps || !set.weight}
@@ -252,7 +264,6 @@ function ExerciseCard({
                   >
                     Save
                   </button>
-                  {/* Delete button */}
                   {exercise.sets.length > 1 && (
                     <button
                       onClick={() => onDeleteSet(set.id)}
@@ -266,9 +277,23 @@ function ExerciseCard({
                     </button>
                   )}
                 </>
+              ) : set.editing ? (
+                <button
+                  onClick={() => onSaveSet(set)}
+                  disabled={!set.reps || !set.weight}
+                  className="bg-blue-600 disabled:opacity-30 text-white
+                             text-xs px-2 py-1.5 rounded-lg active:scale-95
+                             transition-all"
+                >
+                  Update
+                </button>
               ) : (
-                // saved indicator
-                <span className="text-green-500 text-xs px-2">✓</span>
+                <button
+                  onClick={() => onEditSet(set.id)}
+                  className="text-green-500 text-xs px-2 active:text-green-300"
+                >
+                  ✓
+                </button>
               )}
             </div>
           </div>

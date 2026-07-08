@@ -14,7 +14,7 @@ router.use(protect)
 
 router.get('/',            getWorkouts)
 router.post('/',           logWorkout)
-router.post('/today/set',  addSetToToday) 
+router.post('/today/set',  addSetToToday)
 router.put('/:id',         updateWorkout)
 router.delete('/:id',      deleteWorkout)
 
