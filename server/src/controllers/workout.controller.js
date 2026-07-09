@@ -212,3 +212,46 @@ export const addSetToToday = async (req, res, next) => {
     next(err)
   }
 }
+export const updateSetInToday = async (req, res, next) => {
+  try {
+    const { reps, weight, exerciseName } = req.body
+    const { setId } = req.params
+
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date()
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    })
+
+    if (!workout) {
+      return res.status(404).json({ message: 'No workout found for today' })
+    }
+
+    // find the exercise and set
+    let found = false
+    workout.exercises.forEach(ex => {
+      if (ex.name === exerciseName) {
+        ex.sets.forEach(s => {
+          if (s._id.toString() === setId) {
+            s.reps   = parseFloat(reps)   || 0
+            s.weight = parseFloat(weight) || 0
+            found = true
+          }
+        })
+      }
+    })
+
+    if (!found) {
+      return res.status(404).json({ message: 'Set not found' })
+    }
+
+    await workout.save()
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}

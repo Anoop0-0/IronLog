@@ -40,6 +40,7 @@ export default function WorkoutLogger() {
           console.log('today workout:', todayWorkout) 
           setExercises(todayWorkout.exercises.map(ex => ({
             id:       ex._id || nanoid(),
+            originalId: s._id, 
             name:     ex.name,
             bodyPart: ex.bodyPart,
             notes:    ex.notes || '',
@@ -101,45 +102,57 @@ export default function WorkoutLogger() {
   }
 
   const handleEditSet = (exId, setId) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId
-        ? {
-            ...ex,
-            sets: ex.sets.map(s =>
-              s.id === setId ? { ...s, editing: true, saved: false } : s
-            )
-          }
-        : ex
-    ))
-  }
+  setExercises(prev => prev.map(ex =>
+    ex.id === exId
+      ? {
+          ...ex,
+          sets: ex.sets.map(s =>
+            s.id === setId
+              ? { ...s, editing: true, saved: false, originalId: s.originalId || s.id }
+              : s
+          )
+        }
+      : ex
+  ))
+}
 
   const handleSaveSet = async (exercise, set) => {
-    if (!set.reps || !set.weight) return
+  if (!set.reps || !set.weight) return
 
-    try {
+  try {
+    if (set.editing && set.originalId) {
+      // update existing set
+      await updateSetInToday(set.originalId, {
+        exerciseName: exercise.name,
+        reps:         set.reps,
+        weight:       set.weight,
+      })
+    } else {
+      // save new set
       await addSetToToday({
         exerciseName: exercise.name,
         bodyPart:     exercise.bodyPart,
         notes:        exercise.notes,
         set:          { reps: set.reps, weight: set.weight },
       })
+    }
 
-      setExercises(prev => prev.map(ex =>
-        ex.id === exercise.id
-          ? {
-              ...ex,
-              sets: ex.sets.map(s =>
-                s.id === set.id
-                  ? { ...s, saved: true, editing: false }
-                  : s
-              )
-            }
-          : ex
-      ))
+    setExercises(prev => prev.map(ex =>
+      ex.id === exercise.id
+        ? {
+            ...ex,
+            sets: ex.sets.map(s =>
+              s.id === set.id
+                ? { ...s, saved: true, editing: false }
+                : s
+            )
+          }
+        : ex
+    ))
 
-      startRestTimer()
-    } catch {}
-  }
+    startRestTimer()
+  } catch {}
+}
 
   return (
     <AppLayout>

@@ -15,7 +15,9 @@ router.use(protect)
 router.get('/',            getWorkouts)
 router.post('/',           logWorkout)
 router.post('/today/set',  addSetToToday)
+router.put('/today/set/:setId', updateSetInToday)
 router.put('/:id',         updateWorkout)
 router.delete('/:id',      deleteWorkout)
+
 
 export default router
