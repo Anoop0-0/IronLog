@@ -37,6 +37,7 @@ export default function WorkoutLogger() {
         })
 
         if (todayWorkout) {
+          console.log('today workout:', todayWorkout) 
           setExercises(todayWorkout.exercises.map(ex => ({
             id:       ex._id || nanoid(),
             name:     ex.name,
@@ -201,6 +202,7 @@ export default function WorkoutLogger() {
     </AppLayout>
   )
 }
+
 
 function ExerciseCard({
   exercise, noteOpen,
