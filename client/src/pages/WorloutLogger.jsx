@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
-import { addSetToToday, getWorkouts } from '../api/workouts.api'
+import { addSetToToday, getWorkouts, updateSetInToday } from '../api/workouts.api'
 import { useTimer }    from '../context/TimerContext'
 import { newSet }      from '../utils/workoutHelpers'
 import { nanoid }      from 'nanoid'
@@ -20,40 +20,34 @@ export default function WorkoutLogger() {
   const [expandedNote, setExpandedNote] = useState(null)
   const { startRestTimer } = useTimer()
 
-  // load today's workout on mount
   useEffect(() => {
-  const loadToday = async () => {
-    try {
-      const res = await getWorkouts()
-      const workouts = res.data
+    const loadToday = async () => {
+      try {
+        const res = await getWorkouts()
+        const workouts = res.data
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const todayWorkout = workouts.find(w => new Date(w.createdAt) >= since)
 
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
-
-      // get the most recent workout within last 24 hours
-      const todayWorkout = workouts.find(w =>
-        new Date(w.createdAt) >= since
-      )
-
-      if (todayWorkout) {
-        setExercises(todayWorkout.exercises.map(ex => ({
-          id:       ex._id || nanoid(),
-          name:     ex.name,
-          bodyPart: ex.bodyPart,
-          notes:    ex.notes || '',
-          sets:     ex.sets.map(s => ({
-            id:         s._id || nanoid(),
-            originalId: s._id?.toString(), 
-            reps:       s.reps,
-            weight:     s.weight,
-            saved:      true,
-            editing:    false,
-          }))
-        })))
-      }
-    } catch {}
-  }
-  loadToday()
-}, [])
+        if (todayWorkout) {
+          setExercises(todayWorkout.exercises.map(ex => ({
+            id:       ex._id?.toString() || nanoid(),
+            name:     ex.name,
+            bodyPart: ex.bodyPart,
+            notes:    ex.notes || '',
+            sets:     ex.sets.map(s => ({
+              id:         s._id?.toString() || nanoid(),
+              originalId: s._id?.toString(),
+              reps:       s.reps,
+              weight:     s.weight,
+              saved:      true,
+              editing:    false,
+            }))
+          })))
+        }
+      } catch {}
+    }
+    loadToday()
+  }, [])
 
   const handleAddExercise = (name, bodyPart) => {
     setExercises(prev => [...prev, newExercise(name, bodyPart)])
@@ -98,63 +92,56 @@ export default function WorkoutLogger() {
     ))
   }
 
- const handleEditSet = (exId, setId) => {
-  setExercises(prev => prev.map(ex =>
-    ex.id === exId
-      ? {
-          ...ex,
-          sets: ex.sets.map(s =>
-            s.id === setId
-              ? { ...s, editing: true, saved: false }  // originalId already set
-              : s
-          )
-        }
-      : ex
-  ))
-}
-
-  const handleSaveSet = async (exercise, set) => {
- if (!set.reps || !set.weight) return
-  
-  console.log('saving set:', { 
-    editing: set.editing, 
-    originalId: set.originalId,
-    saved: set.saved 
-  })
-  try {
-    if (set.editing && set.originalId) {
-      // update existing set
-      await updateSetInToday(set.originalId, {
-        exerciseName: exercise.name,
-        reps:         set.reps,
-        weight:       set.weight,
-      })
-    } else {
-      // save new set
-      await addSetToToday({
-        exerciseName: exercise.name,
-        bodyPart:     exercise.bodyPart,
-        notes:        exercise.notes,
-        set:          { reps: set.reps, weight: set.weight },
-      })
-    }
-
+  const handleEditSet = (exId, setId) => {
     setExercises(prev => prev.map(ex =>
-      ex.id === exercise.id
+      ex.id === exId
         ? {
             ...ex,
             sets: ex.sets.map(s =>
-              s.id === set.id
-                ? { ...s, saved: true, editing: false }
+              s.id === setId
+                ? { ...s, editing: true, saved: false }
                 : s
             )
           }
         : ex
     ))
+  }
 
-    startRestTimer()
-  } catch {}
-}
+  const handleSaveSet = async (exercise, set) => {
+    if (!set.reps || !set.weight) return
+
+    try {
+      if (set.editing && set.originalId) {
+        await updateSetInToday(set.originalId, {
+          exerciseName: exercise.name,
+          reps:         set.reps,
+          weight:       set.weight,
+        })
+      } else {
+        await addSetToToday({
+          exerciseName: exercise.name,
+          bodyPart:     exercise.bodyPart,
+          notes:        exercise.notes,
+          set:          { reps: set.reps, weight: set.weight },
+        })
+      }
+
+      setExercises(prev => prev.map(ex =>
+        ex.id === exercise.id
+          ? {
+              ...ex,
+              sets: ex.sets.map(s =>
+                s.id === set.id
+                  ? { ...s, saved: true, editing: false }
+                  : s
+              )
+            }
+          : ex
+      ))
+
+      startRestTimer()
+    } catch {}
+  }
 
   return (
     <AppLayout>
@@ -218,7 +205,6 @@ export default function WorkoutLogger() {
   )
 }
 
-
 function ExerciseCard({
   exercise, noteOpen,
   onToggleNote, onDeleteExercise,
@@ -228,7 +214,6 @@ function ExerciseCard({
 }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-      {/* Exercise header */}
       <div className="flex justify-between items-start px-4 pt-4 pb-3">
         <div>
           <h3 className="font-semibold text-white">{exercise.name}</h3>
@@ -252,7 +237,6 @@ function ExerciseCard({
         </div>
       </div>
 
-      {/* Notes */}
       {noteOpen && (
         <div className="px-4 pb-3">
           <input
@@ -267,7 +251,6 @@ function ExerciseCard({
         </div>
       )}
 
-      {/* Sets header */}
       <div className="grid grid-cols-12 px-4 pb-1">
         <span className="col-span-1 text-xs text-gray-600">Set</span>
         <span className="col-span-4 text-xs text-gray-600">Reps</span>
@@ -275,7 +258,6 @@ function ExerciseCard({
         <span className="col-span-3"></span>
       </div>
 
-      {/* Sets */}
       <div className="px-4 space-y-2 pb-3">
         {exercise.sets.map((set, i) => (
           <div key={set.id} className="grid grid-cols-12 items-center gap-1">
@@ -359,7 +341,6 @@ function ExerciseCard({
         ))}
       </div>
 
-      {/* Add set */}
       <button
         onClick={onAddSet}
         className="w-full border-t border-gray-800 py-3 text-xs text-gray-600
