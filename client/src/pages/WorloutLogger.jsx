@@ -114,8 +114,13 @@ export default function WorkoutLogger() {
 }
 
   const handleSaveSet = async (exercise, set) => {
-  if (!set.reps || !set.weight) return
-
+ if (!set.reps || !set.weight) return
+  
+  console.log('saving set:', { 
+    editing: set.editing, 
+    originalId: set.originalId,
+    saved: set.saved 
+  })
   try {
     if (set.editing && set.originalId) {
       // update existing set
