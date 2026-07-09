@@ -4,7 +4,8 @@ import {
   logWorkout,
   deleteWorkout,
   updateWorkout,
-  addSetToToday
+  addSetToToday,
+  updateSetInToday,
 } from '../controllers/workout.controller.js'
 import { protect } from '../middleware/auth.middleware.js'
 
@@ -12,12 +13,11 @@ const router = Router()
 
 router.use(protect)
 
-router.get('/',            getWorkouts)
-router.post('/',           logWorkout)
-router.post('/today/set',  addSetToToday)
-router.put('/today/set/:setId', updateSetInToday)
-router.put('/:id',         updateWorkout)
-router.delete('/:id',      deleteWorkout)
-
+router.get('/',                  getWorkouts)
+router.post('/',                 logWorkout)
+router.post('/today/set',        addSetToToday)
+router.put('/today/set/:setId',  updateSetInToday)
+router.put('/:id',               updateWorkout)
+router.delete('/:id',            deleteWorkout)
 
 export default router
