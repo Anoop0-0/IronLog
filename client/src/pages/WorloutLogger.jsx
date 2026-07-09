@@ -22,41 +22,38 @@ export default function WorkoutLogger() {
 
   // load today's workout on mount
   useEffect(() => {
-    const loadToday = async () => {
-      try {
-        const res = await getWorkouts()
-        const workouts = res.data
+  const loadToday = async () => {
+    try {
+      const res = await getWorkouts()
+      const workouts = res.data
 
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-        const todayWorkout = workouts.find(w => {
-          const d = new Date(w.createdAt)
-          d.setHours(0, 0, 0, 0)
-          return d.getTime() === today.getTime()
-        })
+      // get the most recent workout within last 24 hours
+      const todayWorkout = workouts.find(w =>
+        new Date(w.createdAt) >= since
+      )
 
-        if (todayWorkout) {
-          console.log('today workout:', todayWorkout) 
-          setExercises(todayWorkout.exercises.map(ex => ({
-            id:       ex._id || nanoid(),
-            originalId: s._id, 
-            name:     ex.name,
-            bodyPart: ex.bodyPart,
-            notes:    ex.notes || '',
-            sets:     ex.sets.map(s => ({
-              id:      s._id || nanoid(),
-              reps:    s.reps,
-              weight:  s.weight,
-              saved:   true,
-              editing: false,
-            }))
-          })))
-        }
-      } catch {}
-    }
-    loadToday()
-  }, [])
+      if (todayWorkout) {
+        setExercises(todayWorkout.exercises.map(ex => ({
+          id:       ex._id || nanoid(),
+          name:     ex.name,
+          bodyPart: ex.bodyPart,
+          notes:    ex.notes || '',
+          sets:     ex.sets.map(s => ({
+            id:         s._id || nanoid(),
+            originalId: s._id,
+            reps:       s.reps,
+            weight:     s.weight,
+            saved:      true,
+            editing:    false,
+          }))
+        })))
+      }
+    } catch {}
+  }
+  loadToday()
+}, [])
 
   const handleAddExercise = (name, bodyPart) => {
     setExercises(prev => [...prev, newExercise(name, bodyPart)])

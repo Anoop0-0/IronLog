@@ -136,27 +136,20 @@ export const addSetToToday = async (req, res, next) => {
       return res.status(400).json({ message: 'Exercise name, reps and weight required' })
     }
 
-    // get start of today
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-
-    // get end of today
-    const endOfDay = new Date()
-    endOfDay.setHours(23, 59, 59, 999)
-
     const cleanSet = {
       reps:   parseFloat(set.reps)   || 0,
       weight: parseFloat(set.weight) || 0,
     }
 
-    // find today's workout
+    // use last 24 hours instead of calendar day to avoid timezone issues
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
     let workout = await Workout.findOne({
       userId:    req.user._id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    })
+      createdAt: { $gte: since }
+    }).sort({ createdAt: -1 })
 
     if (!workout) {
-      // create new workout for today
       workout = await Workout.create({
         userId: req.user._id,
         exercises: [{
@@ -167,16 +160,11 @@ export const addSetToToday = async (req, res, next) => {
         }]
       })
     } else {
-      // find if exercise already exists in today's workout
-      const existingEx = workout.exercises.find(
-        ex => ex.name === exerciseName
-      )
+      const existingEx = workout.exercises.find(ex => ex.name === exerciseName)
 
       if (existingEx) {
-        // add set to existing exercise
         existingEx.sets.push(cleanSet)
       } else {
-        // add new exercise with this set
         workout.exercises.push({
           name:     exerciseName,
           bodyPart: bodyPart || '',
@@ -217,15 +205,12 @@ export const updateSetInToday = async (req, res, next) => {
     const { reps, weight, exerciseName } = req.body
     const { setId } = req.params
 
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date()
-    endOfDay.setHours(23, 59, 59, 999)
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
     const workout = await Workout.findOne({
       userId:    req.user._id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    })
+      createdAt: { $gte: since }
+    }).sort({ createdAt: -1 })
 
     if (!workout) {
       return res.status(404).json({ message: 'No workout found for today' })
