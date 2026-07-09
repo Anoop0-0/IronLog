@@ -42,7 +42,7 @@ export default function WorkoutLogger() {
           notes:    ex.notes || '',
           sets:     ex.sets.map(s => ({
             id:         s._id || nanoid(),
-            originalId: s._id,
+            originalId: s._id?.toString(), 
             reps:       s.reps,
             weight:     s.weight,
             saved:      true,
@@ -98,14 +98,14 @@ export default function WorkoutLogger() {
     ))
   }
 
-  const handleEditSet = (exId, setId) => {
+ const handleEditSet = (exId, setId) => {
   setExercises(prev => prev.map(ex =>
     ex.id === exId
       ? {
           ...ex,
           sets: ex.sets.map(s =>
             s.id === setId
-              ? { ...s, editing: true, saved: false, originalId: s.originalId || s.id }
+              ? { ...s, editing: true, saved: false }  // originalId already set
               : s
           )
         }
