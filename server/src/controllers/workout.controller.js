@@ -231,7 +231,6 @@ export const updateSetInToday = async (req, res, next) => {
       return res.status(404).json({ message: 'No workout found for today' })
     }
 
-    // find the exercise and set
     let found = false
     workout.exercises.forEach(ex => {
       if (ex.name === exerciseName) {
