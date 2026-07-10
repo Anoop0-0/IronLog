@@ -27,8 +27,10 @@ export default function WorkoutLogger() {
         const workouts = res.data
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
         const todayWorkout = workouts.find(w => new Date(w.createdAt) >= since)
-
+        
+        
         if (todayWorkout) {
+          console.log('first exercise sets:', JSON.stringify(todayWorkout.exercises[0]?.sets))
           setExercises(todayWorkout.exercises.map(ex => ({
             id:       ex._id?.toString() || nanoid(),
             name:     ex.name,
