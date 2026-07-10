@@ -30,7 +30,7 @@ export default function WorkoutLogger() {
         
         
         if (todayWorkout) {
-          console.log('first exercise sets:', JSON.stringify(todayWorkout.exercises[0]?.sets))
+          
           setExercises(todayWorkout.exercises.map(ex => ({
             id:       ex._id?.toString() || nanoid(),
             name:     ex.name,

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const setSchema=new mongoose.Schema({
     reps:{type:Number,required:true},
     weight:{type:Number,required:true},
-},{_id:false})
+})
 
 const exerciseSchema=new mongoose.Schema({
     name:{type:String,required:true},
