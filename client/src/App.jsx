@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute  from './components/layout/ProtectedRoute'
 import RestTimer       from './components/ui/RestTimer'
+import { useAuth }     from './context/AuthContext'
 import Landing         from './pages/Landing'
 import Login           from './pages/Login'
 import Dashboard       from './pages/Dashboard'
@@ -10,13 +11,13 @@ import Contests        from './pages/Contests'
 import Profile         from './pages/Profile'
 
 export default function App() {
+  const { isLoggedIn } = useAuth()
   return (
     <BrowserRouter>
-    <RestTimer />
+      {isLoggedIn && <RestTimer />}
       <Routes>
         <Route path="/"          element={<Landing />} />
         <Route path="/login"     element={<Login />} />
-        <RestTimer />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/log"       element={<ProtectedRoute><WorkoutLogger /></ProtectedRoute>} />
         <Route path="/progress"  element={<ProtectedRoute><Progress /></ProtectedRoute>} />
