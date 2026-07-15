@@ -5,7 +5,7 @@ import { loginUser, registerUser } from '../api/auth.api'
 import { useGoogleLogin } from '@react-oauth/google'
 import { googleAuth }     from '../api/auth.api'
 
-export default function Landing(){
+export default function Login() {
     const [tab, setTab] = useState('login')
     const [formData, setFormData] = useState({ username: '', email: '', password: '', confirm: '' })
     const [errors, setErrors] = useState({})
