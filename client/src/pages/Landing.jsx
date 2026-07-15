@@ -1,205 +1,238 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { loginUser, registerUser } from '../api/auth.api'
-import { useGoogleLogin } from '@react-oauth/google'
-import { googleAuth }     from '../api/auth.api'
 
-export default function Landing(){
-    const [tab, setTab] = useState('login')
-    const [formData, setFormData] = useState({ username: '', email: '', password: '', confirm: '' })
-    const [errors, setErrors] = useState({})
-    const [loading, setLoading] = useState(false)
-    const [serverError, setServerError] = useState('')
+export default function Landing() {
+  const navigate = useNavigate()
 
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
 
-    const {login}=useAuth();
-    const navigate=useNavigate();
+      {/* Nav */}
+      <nav className="flex justify-between items-center px-6 py-4
+                      border-b border-white/5 sticky top-0 bg-[#0a0a0a] z-10">
+        <span className="text-xl font-bold tracking-[3px] text-red-500">
+          IRONLOG
+        </span>
+        <button
+          onClick={() => navigate('/login')}
+          className="bg-red-500 text-white text-sm font-semibold
+                     px-5 py-2 rounded-lg active:scale-95 transition-all"
+        >
+          Get started
+        </button>
+      </nav>
 
-    const handleChange=(e)=>{
-        setFormData(prev=>({...prev,[e.target.name]:e.target.value}));
-        setErrors(prev=>({...prev,[e.target.name]:''}));
-        setServerError('');
-    }
-    const validateLogin = () => {
-    const errs = {}
-    if (!formData.email.includes('@')) errs.email = 'Enter a valid email'
-    if (formData.password.length < 6) errs.password = 'Min 6 characters'
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-    const validateRegister = () => {
-        const errs = {}
-        if (formData.username.length < 3) errs.username = 'Min 3 characters'
-        if (!formData.email.includes('@')) errs.email = 'Enter a valid email'
-        if (formData.password.length < 6) errs.password = 'Min 6 characters'
-        if (formData.password !== formData.confirm) errs.confirm = 'Passwords do not match'
-        setErrors(errs)
-        return Object.keys(errs).length === 0
-  }
-
-  const handleLogin = async () => {
-    if (!validateLogin()) return
-    setLoading(true)
-    setServerError('')
-    try {
-      const res = await loginUser({ email: formData.email, password: formData.password })
-      login(res.data.user, res.data.token)
-      navigate('/dashboard')
-    } catch (err) {
-      setServerError(err.response?.data?.message || 'Login failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRegister = async () => {
-    if (!validateRegister()) return
-    setLoading(true)
-    setServerError('')
-    try {
-      const res = await registerUser({ username: formData.username, email: formData.email, password: formData.password })
-      login(res.data.user, res.data.token)
-      navigate('/dashboard')
-    } catch (err) {
-      setServerError(err.response?.data?.message || 'Registration failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-  const handleGoogleLogin = useGoogleLogin({
-  onSuccess: async (response) => {
-    try {
-      setLoading(true)
-      setServerError('')
-      const res = await googleAuth(response.access_token)
-      login(res.data.user, res.data.token)
-      navigate('/dashboard')
-    } catch (err) {
-      setServerError('Google login failed. Try again.')
-    } finally {
-      setLoading(false)
-    }
-  },
-  onError: () => setServerError('Google login failed. Try again.')
-})
-
-  return(
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-700 mb-6">
-          {['login', 'register'].map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 pb-3 text-sm font-medium capitalize transition-colors
-                ${tab === t ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-400'}`}>
-              {t === 'login' ? 'Log in' : 'Create account'}
-            </button>
-          ))}
+      {/* Hero */}
+      <section className="text-center px-6 pt-20 pb-16 max-w-3xl mx-auto">
+        <div className="inline-block bg-red-950/40 border border-red-500/20
+                        text-red-400 text-xs px-4 py-1.5 rounded-full
+                        mb-6 tracking-wide">
+          Now with Google Sign-In
+        </div>
+        <h1 className="text-5xl sm:text-6xl font-bold leading-tight
+                       tracking-tight mb-5">
+          Track lifts.<br/>
+          <span className="text-red-500">Crush</span> friends.
+        </h1>
+        <p className="text-lg text-gray-500 leading-relaxed mb-10
+                      max-w-lg mx-auto">
+          The gym tracker built for people who actually train. Log sets instantly,
+          visualize progress, and compete on real-time leaderboards.
+        </p>
+        <div className="flex gap-3 justify-center flex-wrap mb-14">
+          <button
+            onClick={() => navigate('/login')}
+            className="bg-red-500 text-white font-semibold px-8 py-3.5
+                       rounded-xl text-base active:scale-95 transition-all"
+          >
+            Start for free
+          </button>
+          <button
+            onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
+            className="bg-transparent text-gray-500 border border-white/10
+                       font-medium px-8 py-3.5 rounded-xl text-base
+                       active:scale-95 transition-all"
+          >
+            See how it works
+          </button>
         </div>
 
-        {/* Server error */}
-        {serverError && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 text-sm rounded-lg p-3 mb-4">
-            {serverError}
+        {/* Phone mockup */}
+        <div className="flex justify-center">
+          <div className="bg-[#111] border border-white/5 rounded-[28px]
+                          w-56 overflow-hidden shadow-2xl">
+            <div className="bg-[#0a0a0a] px-4 py-3 text-right
+                            text-xs text-white/20">
+              9:41
+            </div>
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <p className="text-xs text-gray-600">Welcome back</p>
+                  <p className="text-sm font-bold">Anoop 👋</p>
+                </div>
+                <div className="bg-red-500 text-white text-xs
+                                px-2.5 py-1.5 rounded-md font-semibold">
+                  + Log
+                </div>
+              </div>
+              <div className="bg-[#161616] border border-white/5
+                              rounded-xl p-3 mb-2">
+                <p className="text-xs text-gray-600 mb-1">Today</p>
+                <p className="text-xs font-semibold text-gray-300">
+                  Bench Press
+                </p>
+                <p className="text-xs text-red-400 mt-1">
+                  Set 1 &nbsp; 8 reps @ 80kg ✓
+                </p>
+                <p className="text-xs text-red-400">
+                  Set 2 &nbsp; 8 reps @ 85kg ✓
+                </p>
+              </div>
+              <div className="bg-blue-950/40 border border-blue-500/20
+                              rounded-xl p-3 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
+                <p className="text-xs text-blue-400 font-semibold">
+                  Rest timer · 01:24
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Login form */}
-        {tab === 'login' && (
-          <div className="flex flex-col gap-4">
-            <Field label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
-            <Field label="Password" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
-            <button onClick={handleLogin} disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 py-3 rounded-lg font-medium transition-colors">
-              {loading ? 'Logging in...' : 'Log in'}
-            </button>
-            {/* add this after the submit button in both login and register panels */}
-<div className="flex items-center gap-3 my-2">
-  <div className="flex-1 h-px bg-gray-800"/>
-  <span className="text-xs text-gray-600">or</span>
-  <div className="flex-1 h-px bg-gray-800"/>
-</div>
+      {/* Features */}
+      <section id="features" className="px-6 py-16 max-w-5xl mx-auto">
+        <p className="text-xs tracking-widest text-red-500 uppercase mb-2">
+          Everything you need
+        </p>
+        <h2 className="text-3xl font-bold mb-2">Built for the gym floor</h2>
+        <p className="text-gray-600 mb-12">
+          Not a spreadsheet. Not a notes app. A real gym tracker.
+        </p>
 
-<button
-  onClick={handleGoogleLogin}
-  disabled={loading}
-  className="w-full flex items-center justify-center gap-3
-             bg-white text-gray-800 font-medium py-3 rounded-xl
-             text-sm active:scale-95 transition-all disabled:opacity-50"
->
-  {/* Google SVG icon */}
-  <svg width="18" height="18" viewBox="0 0 48 48">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-    <path fill="none" d="M0 0h48v48H0z"/>
-  </svg>
-  Continue with Google
-</button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            {
+              icon: '💾',
+              color: 'bg-red-500/10',
+              title: 'Save sets instantly',
+              desc: 'Tap Save after each set — syncs immediately. Switch tabs, lock your phone, come back. Your data is safe.'
+            },
+            {
+              icon: '⏱️',
+              color: 'bg-blue-500/10',
+              title: 'Auto rest timer',
+              desc: 'Timer starts automatically when you save a set. Presets at 60s, 90s, 2min, 3min or any custom duration.'
+            },
+            {
+              icon: '📈',
+              color: 'bg-green-500/10',
+              title: 'Progress analytics',
+              desc: 'Weekly volume charts, personal record detection, body-part breakdowns. See exactly where you\'re improving.'
+            },
+            {
+              icon: '🏆',
+              color: 'bg-amber-500/10',
+              title: 'Friend contests',
+              desc: 'Create a challenge, share an invite code, compete on heaviest lift. Leaderboard updates in real time.'
+            },
+          ].map((f, i) => (
+            <div key={i} className="bg-[#111] border border-white/5
+                                    rounded-2xl p-6">
+              <div className={`w-10 h-10 ${f.color} rounded-xl flex
+                              items-center justify-center text-lg mb-4`}>
+                {f.icon}
+              </div>
+              <h3 className="font-semibold text-gray-200 mb-2">{f.title}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Contest leaderboard mockup */}
+      <section className="px-6 py-16 max-w-5xl mx-auto">
+        <p className="text-xs tracking-widest text-red-500 uppercase mb-2">
+          Compete
+        </p>
+        <h2 className="text-3xl font-bold mb-2">Real-time leaderboards</h2>
+        <p className="text-gray-600 mb-10">
+          Challenge your gym friends. Scores update the moment a qualifying
+          workout is logged.
+        </p>
+
+        <div className="bg-[#111] border border-white/5 rounded-2xl
+                        overflow-hidden max-w-sm mx-auto">
+          <div className="p-4 border-b border-white/5">
+            <h3 className="font-semibold text-white text-sm">
+              Bench Press Battle
+            </h3>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Bench Press · Heaviest single lift
+            </p>
+            <div className="flex gap-2 mt-3">
+              {['🔄 Live', '4d left', '4 athletes'].map(t => (
+                <span key={t} className="text-xs bg-white/5 text-gray-600
+                                         px-2 py-1 rounded-full border
+                                         border-white/5">
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
-        )}
 
-        {/* Register form */}
-        {tab === 'register' && (
-          <div className="flex flex-col gap-4">
-            <Field label="Username" name="username" value={formData.username} onChange={handleChange} error={errors.username} />
-            <Field label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
-            <Field label="Password" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
-            <Field label="Confirm password" name="confirm" type="password" value={formData.confirm} onChange={handleChange} error={errors.confirm} />
-            <button onClick={handleRegister} disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 py-3 rounded-lg font-medium transition-colors">
-              {loading ? 'Creating account...' : 'Create account'}
-            </button>
-            {/* add this after the submit button in both login and register panels */}
-<div className="flex items-center gap-3 my-2">
-  <div className="flex-1 h-px bg-gray-800"/>
-  <span className="text-xs text-gray-600">or</span>
-  <div className="flex-1 h-px bg-gray-800"/>
-</div>
+          {[
+            { rank: '🥇', name: 'anoop',  reps: 5, weight: '100kg', gold: true  },
+            { rank: '🥈', name: 'rahul',  reps: 6, weight: '90kg',  gold: false },
+            { rank: '🥉', name: 'priya',  reps: 8, weight: '85kg',  gold: false },
+            { rank: '4',  name: 'vikram', reps: 5, weight: '80kg',  gold: false },
+          ].map((e, i) => (
+            <div key={i} className={`flex items-center px-4 py-3.5
+                                     border-b border-white/[0.04] last:border-0
+                                     ${e.gold ? 'bg-yellow-900/10' : ''}`}>
+              <span className={`w-8 text-lg ${!e.gold && i === 3 ? 'text-xs text-gray-600' : ''}`}>
+                {e.rank}
+              </span>
+              <div className="w-9 h-9 rounded-full bg-white/5 border
+                              border-white/10 flex items-center justify-center
+                              text-xs font-semibold text-gray-500 mx-3">
+                {e.name[0].toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-300">{e.name}</p>
+                <p className="text-xs text-gray-600">{e.reps} reps</p>
+              </div>
+              <p className={`text-lg font-bold
+                            ${e.gold ? 'text-yellow-400' : 'text-red-400'}`}>
+                {e.weight}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-<button
-  onClick={handleGoogleLogin}
-  disabled={loading}
-  className="w-full flex items-center justify-center gap-3
-             bg-white text-gray-800 font-medium py-3 rounded-xl
-             text-sm active:scale-95 transition-all disabled:opacity-50"
->
-  {/* Google SVG icon */}
-  <svg width="18" height="18" viewBox="0 0 48 48">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-    <path fill="none" d="M0 0h48v48H0z"/>
-  </svg>
-  Continue with Google
-</button>
-          </div>
-        )}
-      </div>
+      {/* CTA */}
+      <section className="text-center px-6 py-20 border-t border-white/5">
+        <h2 className="text-4xl font-bold mb-4">
+          Ready to start lifting smarter?
+        </h2>
+        <p className="text-gray-500 mb-8">
+          No credit card. Works on any phone. Install it like a native app.
+        </p>
+        <button
+          onClick={() => navigate('/login')}
+          className="bg-red-500 text-white font-semibold px-10 py-4
+                     rounded-xl text-lg active:scale-95 transition-all"
+        >
+          Open IRONLOG
+        </button>
+      </section>
+
+      {/* Footer */}
+      <footer className="text-center py-8 border-t border-white/5
+                         text-xs text-gray-700">
+        © 2026 IRONLOG · Built by Anoop Baghel
+      </footer>
     </div>
   )
 }
-
-// Small reusable input component — defined in the same file for now
-function Field({ label, name, type = 'text', value, onChange, error }) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <input
-        name={name} type={type} value={value} onChange={onChange}
-        className="w-full bg-gray-900 border border-gray-700 focus:border-red-500 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors"
-      />
-      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
-    </div>
-  )
-}
-
-
-
-
-  
