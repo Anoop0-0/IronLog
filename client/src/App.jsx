@@ -12,10 +12,11 @@ import Profile         from './pages/Profile'
 export default function App() {
   return (
     <BrowserRouter>
-      <RestTimer />
+    <RestTimer />
       <Routes>
         <Route path="/"          element={<Landing />} />
         <Route path="/login"     element={<Login />} />
+        <RestTimer />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/log"       element={<ProtectedRoute><WorkoutLogger /></ProtectedRoute>} />
         <Route path="/progress"  element={<ProtectedRoute><Progress /></ProtectedRoute>} />
