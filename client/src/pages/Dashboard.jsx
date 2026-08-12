@@ -1,3 +1,4 @@
+import { useState }     from 'react'
 import { useAuth }      from '../context/AuthContext'
 import { useWorkouts }  from '../hooks/useWorkouts'
 import AppLayout        from '../components/layout/AppLayout'
@@ -21,19 +22,26 @@ export default function Dashboard() {
   const { workouts, loading, error,
           removeWorkout, replaceWorkout }          = useWorkouts()
   const navigate                                  = useNavigate()
+  const [actionError, setActionError]             = useState('')
 
   const handleDelete = async (id) => {
+    setActionError('')
     try {
       await deleteWorkout(id)
       removeWorkout(id)
-    } catch {}
+    } catch {
+      setActionError('Failed to delete workout — try again')
+    }
   }
 
   const handleUpdate = async (id, exercises) => {
+    setActionError('')
     try {
       const res = await updateWorkout(id, { exercises })
       replaceWorkout(res.data)
-    } catch {}
+    } catch {
+      setActionError('Failed to save changes — try again')
+    }
   }
 
   return (
@@ -82,6 +90,14 @@ export default function Dashboard() {
         {error && (
           <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
             {error}
+          </div>
+        )}
+
+        {actionError && (
+          <div className="bg-red-900/20 border border-red-800 rounded-xl p-4
+                          text-red-400 text-sm mb-3 flex justify-between items-center">
+            <span>{actionError}</span>
+            <button onClick={() => setActionError('')} className="text-red-500 text-xs ml-2">✕</button>
           </div>
         )}
 

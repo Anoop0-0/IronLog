@@ -21,6 +21,7 @@ export default function Leaderboard({ contest, onClose }) {
   const { user }                      = useAuth()
   const [entries,  setEntries]        = useState([])
   const [loading,  setLoading]        = useState(true)
+  const [loadError, setLoadError]     = useState('')
   const [showForm, setShowForm]       = useState(false)
   const [weight,   setWeight]         = useState('')
   const [reps,     setReps]           = useState('')
@@ -31,8 +32,10 @@ export default function Leaderboard({ contest, onClose }) {
     try {
       const res = await getLeaderboard(contest._id || contest.id)
       setEntries(res.data)
-    } catch {}
-    finally { setLoading(false) }
+      setLoadError('')
+    } catch {
+      setLoadError('Failed to load leaderboard')
+    } finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -198,6 +201,17 @@ export default function Leaderboard({ contest, onClose }) {
 
         {/* Leaderboard list */}
         <div className="overflow-y-auto pb-24">
+          {loadError && (
+            <div className="mx-4 mt-4 bg-red-900/20 border border-red-800
+                            rounded-xl p-3 text-red-400 text-sm flex
+                            justify-between items-center">
+              <span>{loadError}</span>
+              <button onClick={fetchLeaderboard} className="text-xs underline ml-2">
+                Retry
+              </button>
+            </div>
+          )}
+
           {loading && (
             <div className="space-y-2 p-4">
               {[1,2,3].map(i => (

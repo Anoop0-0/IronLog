@@ -20,8 +20,21 @@ export const createContest = async (req, res, next) => {
   try {
     const { name, exercise, metric, startDate, endDate } = req.body
 
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Contest name is required' })
+    }
+    if (!exercise) {
+      return res.status(400).json({ message: 'Exercise is required' })
+    }
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start and end date are required' })
+    }
+    if (new Date(endDate) <= new Date(startDate)) {
+      return res.status(400).json({ message: 'End date must be after start date' })
+    }
+
     const contest = await Contest.create({
-      name,
+      name:      name.trim(),
       exercise,
       metric,
       startDate,
@@ -81,40 +94,52 @@ export const getLeaderboard = async (req, res, next) => {
       return res.status(404).json({ message: 'Contest not found' })
     }
 
-    const leaderboard = await Promise.all(
-      contest.participants.map(async (participant) => {
-        const workouts = await Workout.find({
-          userId: participant.userId,
-          createdAt: {
-            $gte: contest.startDate,
-            $lte: contest.endDate,
-          }
-        })
-
-        let bestWeight = participant.weight || 0
-        let bestReps   = participant.reps   || 0
-
-        workouts.forEach(workout => {
-          workout.exercises.forEach(ex => {
-            if (ex.name === contest.exercise) {
-              ex.sets.forEach(set => {
-                if (set.weight > bestWeight) {
-                  bestWeight = set.weight
-                  bestReps   = set.reps
-                }
-              })
-            }
-          })
-        })
-
-        return {
-          userId:   participant.userId,
-          username: participant.username,
-          weight:   bestWeight,
-          reps:     bestReps,
-        }
-      })
+    const isParticipant = contest.participants.some(
+      p => p.userId.toString() === req.user._id.toString()
     )
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Not a participant in this contest' })
+    }
+
+    const participantIds = contest.participants.map(p => p.userId)
+
+    // single aggregation instead of one workout query per participant —
+    // find each participant's best set for this exercise within the window
+    const bestLifts = await Workout.aggregate([
+      { $match: {
+          userId:    { $in: participantIds },
+          createdAt: { $gte: contest.startDate, $lte: contest.endDate },
+      }},
+      { $unwind: '$exercises' },
+      { $match: { 'exercises.name': contest.exercise } },
+      { $unwind: '$exercises.sets' },
+      { $sort: { 'exercises.sets.weight': -1 } },
+      { $group: {
+          _id:    '$userId',
+          weight: { $first: '$exercises.sets.weight' },
+          reps:   { $first: '$exercises.sets.reps' },
+      }},
+    ])
+
+    const bestByUser = new Map(
+      bestLifts.map(b => [b._id.toString(), { weight: b.weight, reps: b.reps }])
+    )
+
+    const leaderboard = contest.participants.map(participant => {
+      const fromWorkouts = bestByUser.get(participant.userId.toString())
+      // participant.weight/reps is the floor (also updated by logContestLift,
+      // which isn't tied to a workout doc); use it unless a logged workout beats it
+      const best = fromWorkouts && fromWorkouts.weight > (participant.weight || 0)
+        ? fromWorkouts
+        : { weight: participant.weight || 0, reps: participant.reps || 0 }
+
+      return {
+        userId:   participant.userId,
+        username: participant.username,
+        weight:   best.weight,
+        reps:     best.reps,
+      }
+    })
 
     leaderboard.sort((a, b) => b.weight - a.weight)
     res.json(leaderboard)

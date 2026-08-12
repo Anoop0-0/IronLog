@@ -11,7 +11,7 @@ export function useContests() {
       try {
         const res = await getContests()
         setContests(res.data)
-      } catch (err) {
+      } catch {
         setError('Failed to load contests')
       } finally {
         setLoading(false)

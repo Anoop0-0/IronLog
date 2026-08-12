@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
-import { addSetToToday, getWorkouts, updateSetInToday } from '../api/workouts.api'
+import {
+  addSetToToday, getTodayWorkout, updateSetInToday,
+  updateExerciseNotes, deleteExerciseFromToday,
+} from '../api/workouts.api'
 import { useTimer }    from '../context/TimerContext'
 import { newSet }      from '../utils/workoutHelpers'
 import { nanoid }      from 'nanoid'
@@ -18,19 +21,17 @@ export default function WorkoutLogger() {
   const [exercises,    setExercises]    = useState([])
   const [pickerOpen,   setPickerOpen]   = useState(false)
   const [expandedNote, setExpandedNote] = useState(null)
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState('')
   const { startRestTimer } = useTimer()
 
   useEffect(() => {
     const loadToday = async () => {
       try {
-        const res = await getWorkouts()
-        const workouts = res.data
-        const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        const todayWorkout = workouts.find(w => new Date(w.createdAt) >= since)
-        
-        
+        const res = await getTodayWorkout()
+        const todayWorkout = res.data
+
         if (todayWorkout) {
-          
           setExercises(todayWorkout.exercises.map(ex => ({
             id:       ex._id?.toString() || nanoid(),
             name:     ex.name,
@@ -46,7 +47,11 @@ export default function WorkoutLogger() {
             }))
           })))
         }
-      } catch {}
+      } catch {
+        setError('Failed to load today\'s workout')
+      } finally {
+        setLoading(false)
+      }
     }
     loadToday()
   }, [])
@@ -55,8 +60,19 @@ export default function WorkoutLogger() {
     setExercises(prev => [...prev, newExercise(name, bodyPart)])
   }
 
-  const handleDeleteExercise = (exId) => {
-    setExercises(prev => prev.filter(ex => ex.id !== exId))
+  const handleDeleteExercise = async (exercise) => {
+    const hasSavedSets = exercise.sets.some(s => s.originalId)
+
+    if (hasSavedSets) {
+      try {
+        await deleteExerciseFromToday(exercise.name)
+      } catch {
+        setError('Failed to delete exercise — try again')
+        return
+      }
+    }
+
+    setExercises(prev => prev.filter(ex => ex.id !== exercise.id))
   }
 
   const handleAddSet = (exId) => {
@@ -94,6 +110,20 @@ export default function WorkoutLogger() {
     ))
   }
 
+  // notes for an unsaved exercise ride along with its first saved set;
+  // for an exercise that already has saved sets there's no later save
+  // point to piggyback on, so persist the note explicitly on blur
+  const handleNotesBlur = async (exercise) => {
+    const hasSavedSets = exercise.sets.some(s => s.originalId)
+    if (!hasSavedSets) return
+
+    try {
+      await updateExerciseNotes({ exerciseName: exercise.name, notes: exercise.notes })
+    } catch {
+      setError('Failed to save note — try again')
+    }
+  }
+
   const handleEditSet = (exId, setId) => {
     setExercises(prev => prev.map(ex =>
       ex.id === exId
@@ -111,6 +141,7 @@ export default function WorkoutLogger() {
 
   const handleSaveSet = async (exercise, set) => {
     if (!set.reps || !set.weight) return
+    setError('')
 
     try {
       if (set.editing && set.originalId) {
@@ -142,7 +173,9 @@ export default function WorkoutLogger() {
       ))
 
       startRestTimer()
-    } catch {}
+    } catch {
+      setError('Failed to save set — check your connection and try again')
+    }
   }
 
   return (
@@ -157,7 +190,21 @@ export default function WorkoutLogger() {
       </div>
 
       <div className="px-4 space-y-4">
-        {exercises.length === 0 && (
+        {error && (
+          <div className="bg-red-900/20 border border-red-800 rounded-xl
+                          p-3 text-red-400 text-sm flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="text-red-500 text-xs ml-2">✕</button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="space-y-3">
+            <div className="h-32 bg-gray-900 rounded-xl animate-pulse"/>
+          </div>
+        )}
+
+        {!loading && exercises.length === 0 && (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">💪</p>
             <p className="text-gray-400 font-medium">No exercises yet</p>
@@ -175,13 +222,14 @@ export default function WorkoutLogger() {
             onToggleNote={() =>
               setExpandedNote(prev => prev === ex.id ? null : ex.id)
             }
-            onDeleteExercise={() => handleDeleteExercise(ex.id)}
+            onDeleteExercise={() => handleDeleteExercise(ex)}
             onAddSet={() => handleAddSet(ex.id)}
             onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
             onUpdateSet={(setId, field, val) =>
               handleUpdateSet(ex.id, setId, field, val)
             }
             onNoteChange={(val) => handleNotes(ex.id, val)}
+            onNoteBlur={() => handleNotesBlur(ex)}
             onSaveSet={(set) => handleSaveSet(ex, set)}
             onEditSet={(setId) => handleEditSet(ex.id, setId)}
           />
@@ -211,7 +259,7 @@ function ExerciseCard({
   exercise, noteOpen,
   onToggleNote, onDeleteExercise,
   onAddSet, onDeleteSet,
-  onUpdateSet, onNoteChange,
+  onUpdateSet, onNoteChange, onNoteBlur,
   onSaveSet, onEditSet
 }) {
   return (
@@ -246,6 +294,7 @@ function ExerciseCard({
             placeholder="Add a note..."
             value={exercise.notes}
             onChange={e => onNoteChange(e.target.value)}
+            onBlur={onNoteBlur}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg
                        px-3 py-2 text-sm text-gray-300 placeholder-gray-600
                        outline-none focus:border-gray-500"

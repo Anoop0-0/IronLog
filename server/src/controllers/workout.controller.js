@@ -1,5 +1,6 @@
 import Workout from '../models/Workout.model.js'
-import Contest from '../models/Contest.model.js'
+import { getTodayWindowStart } from '../utils/dateWindow.js'
+import { applyContestScore, applyContestScoresForExercises } from '../utils/contestScoring.js'
 
 // ── get all workouts for logged in user ───────────────
 export const getWorkouts = async (req, res, next) => {
@@ -8,6 +9,20 @@ export const getWorkouts = async (req, res, next) => {
       .sort({ createdAt: -1 })
 
     res.json(workouts)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ── get just today's (rolling 24h) workout ────────────
+export const getTodayWorkout = async (req, res, next) => {
+  try {
+    const workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: getTodayWindowStart() }
+    }).sort({ createdAt: -1 })
+
+    res.json(workout || null)
   } catch (err) {
     next(err)
   }
@@ -36,40 +51,7 @@ export const logWorkout = async (req, res, next) => {
       exercises: cleanedExercises,
     })
 
-    // ── auto-update contest scores ──────────────────
-    const activeContests = await Contest.find({
-      'participants.userId': req.user._id,
-      endDate:   { $gte: new Date() },
-      startDate: { $lte: new Date() },
-    })
-
-    for (const contest of activeContests) {
-      let bestWeight = 0
-      let bestReps   = 0
-
-      cleanedExercises.forEach(ex => {
-        if (ex.name === contest.exercise) {
-          ex.sets.forEach(set => {
-            if (set.weight > bestWeight) {
-              bestWeight = set.weight
-              bestReps   = set.reps
-            }
-          })
-        }
-      })
-
-      if (bestWeight > 0) {
-        const participant = contest.participants.find(
-          p => p.userId.toString() === req.user._id.toString()
-        )
-        if (participant && bestWeight > participant.weight) {
-          participant.weight = bestWeight
-          participant.reps   = bestReps
-          await contest.save()
-        }
-      }
-    }
-    // ───────────────────────────────────────────────
+    await applyContestScoresForExercises(req.user._id, cleanedExercises)
 
     res.status(201).json(workout)
   } catch (err) {
@@ -128,6 +110,7 @@ export const updateWorkout = async (req, res, next) => {
     next(err)
   }
 }
+
 export const addSetToToday = async (req, res, next) => {
   try {
     const { exerciseName, bodyPart, notes, set } = req.body
@@ -141,16 +124,14 @@ export const addSetToToday = async (req, res, next) => {
       weight: parseFloat(set.weight) || 0,
     }
 
-    // use last 24 hours instead of calendar day to avoid timezone issues
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
-
-    let workout = await Workout.findOne({
+    const workout = await Workout.findOne({
       userId:    req.user._id,
-      createdAt: { $gte: since }
+      createdAt: { $gte: getTodayWindowStart() }
     }).sort({ createdAt: -1 })
 
+    let saved
     if (!workout) {
-      workout = await Workout.create({
+      saved = await Workout.create({
         userId: req.user._id,
         exercises: [{
           name:     exerciseName,
@@ -164,6 +145,7 @@ export const addSetToToday = async (req, res, next) => {
 
       if (existingEx) {
         existingEx.sets.push(cleanSet)
+        if (notes !== undefined) existingEx.notes = notes
       } else {
         workout.exercises.push({
           name:     exerciseName,
@@ -173,56 +155,44 @@ export const addSetToToday = async (req, res, next) => {
         })
       }
       await workout.save()
+      saved = workout
     }
 
-    // auto-update contest scores
-    const activeContests = await Contest.find({
-      'participants.userId': req.user._id,
-      endDate:   { $gte: new Date() },
-      startDate: { $lte: new Date() },
-    })
+    await applyContestScore(req.user._id, exerciseName, cleanSet.weight, cleanSet.reps)
 
-    for (const contest of activeContests) {
-      if (contest.exercise === exerciseName) {
-        const participant = contest.participants.find(
-          p => p.userId.toString() === req.user._id.toString()
-        )
-        if (participant && cleanSet.weight > participant.weight) {
-          participant.weight = cleanSet.weight
-          participant.reps   = cleanSet.reps
-          await contest.save()
-        }
-      }
-    }
-
-    res.json(workout)
+    res.json(saved)
   } catch (err) {
     next(err)
   }
 }
+
 export const updateSetInToday = async (req, res, next) => {
   try {
-    const { reps, weight, exerciseName } = req.body
+    const { reps, weight, exerciseName, notes } = req.body
     const { setId } = req.params
-
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
     const workout = await Workout.findOne({
       userId:    req.user._id,
-      createdAt: { $gte: since }
+      createdAt: { $gte: getTodayWindowStart() }
     }).sort({ createdAt: -1 })
 
     if (!workout) {
       return res.status(404).json({ message: 'No workout found for today' })
     }
 
-    let found = false
+    let found      = false
+    let newWeight  = 0
+    let newReps    = 0
+
     workout.exercises.forEach(ex => {
       if (ex.name === exerciseName) {
+        if (notes !== undefined) ex.notes = notes
         ex.sets.forEach(s => {
           if (s._id.toString() === setId) {
-            s.reps   = parseFloat(reps)   || 0
-            s.weight = parseFloat(weight) || 0
+            newReps   = parseFloat(reps)   || 0
+            newWeight = parseFloat(weight) || 0
+            s.reps    = newReps
+            s.weight  = newWeight
             found = true
           }
         })
@@ -231,6 +201,73 @@ export const updateSetInToday = async (req, res, next) => {
 
     if (!found) {
       return res.status(404).json({ message: 'Set not found' })
+    }
+
+    await workout.save()
+
+    await applyContestScore(req.user._id, exerciseName, newWeight, newReps)
+
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ── update just the note text for an exercise in today's workout ──
+export const updateExerciseNotesInToday = async (req, res, next) => {
+  try {
+    const { exerciseName, notes } = req.body
+
+    if (!exerciseName) {
+      return res.status(400).json({ message: 'Exercise name required' })
+    }
+
+    const workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: getTodayWindowStart() }
+    }).sort({ createdAt: -1 })
+
+    if (!workout) {
+      return res.status(404).json({ message: 'No workout found for today' })
+    }
+
+    const exercise = workout.exercises.find(ex => ex.name === exerciseName)
+    if (!exercise) {
+      return res.status(404).json({ message: 'Exercise not found in today\'s workout' })
+    }
+
+    exercise.notes = notes || ''
+    await workout.save()
+
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ── remove an exercise (and its saved sets) from today's workout ──
+export const deleteExerciseFromToday = async (req, res, next) => {
+  try {
+    const { exerciseName } = req.body
+
+    if (!exerciseName) {
+      return res.status(400).json({ message: 'Exercise name required' })
+    }
+
+    const workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: getTodayWindowStart() }
+    }).sort({ createdAt: -1 })
+
+    if (!workout) {
+      return res.status(404).json({ message: 'No workout found for today' })
+    }
+
+    const before = workout.exercises.length
+    workout.exercises = workout.exercises.filter(ex => ex.name !== exerciseName)
+
+    if (workout.exercises.length === before) {
+      return res.status(404).json({ message: 'Exercise not found in today\'s workout' })
     }
 
     await workout.save()
