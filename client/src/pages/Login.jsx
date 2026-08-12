@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { loginUser, registerUser } from '../api/auth.api'
 import { useGoogleLogin } from '@react-oauth/google'
 import { googleAuth }     from '../api/auth.api'
+import AuthShell          from '../components/layout/AuthShell'
 
 export default function Login() {
     const [tab, setTab] = useState('login')
@@ -85,9 +86,11 @@ export default function Login() {
 })
 
   return(
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
+    <AuthShell>
+        <h1 className="text-5xl font-black text-red-500 text-center tracking-widest">IRONLOG</h1>
+        <p className="text-center text-sm text-gray-500 mt-2 mb-8">
+          Track lifts. Crush friends.
+        </p>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-700 mb-6">
@@ -112,6 +115,9 @@ export default function Login() {
           <div className="flex flex-col gap-4">
             <Field label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
             <Field label="Password" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
+            <Link to="/forgot-password" className="text-xs text-gray-500 hover:text-gray-300 -mt-2 self-end">
+              Forgot password?
+            </Link>
             <button onClick={handleLogin} disabled={loading}
               className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 py-3 rounded-lg font-medium transition-colors">
               {loading ? 'Logging in...' : 'Log in'}
@@ -180,8 +186,7 @@ export default function Login() {
 </button>
           </div>
         )}
-      </div>
-    </div>
+    </AuthShell>
   )
 }
 

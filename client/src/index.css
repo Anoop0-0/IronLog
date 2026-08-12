@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@theme {
+  /* the app previously shipped two different "near-black" backgrounds:
+     Landing used a custom #0a0a0a while every other screen used Tailwind's
+     default gray-950 (#030712, visibly blue-tinted). Standardizing here
+     makes bg-gray-950 the one source of truth for the app background. */
+  --color-gray-950: #0a0a0a;
+}
+
+html {
+  color-scheme: dark;
+  background-color: #0a0a0a;
+}

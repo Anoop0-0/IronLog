@@ -4,7 +4,7 @@ import CreateContestModal   from '../components/contest/CreateContestModal'
 import Leaderboard          from '../components/contest/Leaderboard'
 import { useContests }      from '../hooks/useContests'
 import { joinContest }      from '../api/contests.api'
-import { useAuth }          from '../context/AuthContext'
+import { useAuth }          from '../hooks/useAuth'
 
 // countdown timer
 const getCountdown = (endDate) => {
@@ -27,11 +27,13 @@ export default function Contests() {
   const [joinLoading,     setJoinLoading]     = useState(false)
   const [joinError,       setJoinError]       = useState('')
   const [copiedId,        setCopiedId]        = useState(null)
-  const [now,             setNow]             = useState(Date.now())
+  // ticking state exists purely to force a re-render each minute — the
+  // countdown labels themselves recompute from `new Date()` at render time
+  const [, forceTick] = useState(0)
 
   // update countdown every minute
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000)
+    const interval = setInterval(() => forceTick(t => t + 1), 60000)
     return () => clearInterval(interval)
   }, [])
 

@@ -17,4 +17,9 @@ const workoutSchema=new mongoose.Schema({
     exercises:[exerciseSchema]
 },{timestamps:true})
 
+// every controller queries by this exact pair (getWorkouts, getTodayWorkout,
+// the contest leaderboard aggregation) — without it Mongo collection-scans
+// as workout history grows
+workoutSchema.index({ userId: 1, createdAt: -1 })
+
 export default mongoose.model('Workout',workoutSchema)

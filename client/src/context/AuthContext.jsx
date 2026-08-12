@@ -1,13 +1,10 @@
-import { createContext, useContext,useState } from "react";
-
-//creating context object
-const AuthContext = createContext();
-
+import { useState } from "react";
+import { AuthContext } from "./auth-context";
 
 //wrapping the whole app
 export function AuthProvider({children}){
     const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem('user')) 
+    JSON.parse(localStorage.getItem('user'))
   )
     const [token, setToken] = useState(localStorage.getItem('token'))
 
@@ -26,15 +23,16 @@ export function AuthProvider({children}){
         localStorage.removeItem("token");
         localStorage.removeItem('user')
     }
+
+    // patch the stored user after a profile edit (no new token involved)
+    const updateUser=(userData)=>{
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData))
+    }
+
     return(
-        <AuthContext.Provider value={{user,token,login,logout,isLoggedIn: !!token}}>
+        <AuthContext.Provider value={{user,token,login,logout,updateUser,isLoggedIn: !!token}}>
             {children}
         </AuthContext.Provider>
     )
 }
-
-//custom hook to use the context
-export function useAuth(){
-    return useContext(AuthContext);
-}
-

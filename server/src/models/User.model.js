@@ -21,7 +21,17 @@ const userSchema=new mongoose.Schema({
     googleId: {
   type: String,
   default: null,
+},
+    resetPasswordTokenHash: {
+  type: String,
+  default: null,
+},
+    resetPasswordExpires: {
+  type: Date,
+  default: null,
 }
 },{timestamps:true})
+
+userSchema.index({ resetPasswordTokenHash: 1 })
 
 export default mongoose.model('User',userSchema)

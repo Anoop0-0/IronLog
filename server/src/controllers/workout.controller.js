@@ -1,6 +1,7 @@
 import Workout from '../models/Workout.model.js'
 import { getTodayWindowStart } from '../utils/dateWindow.js'
 import { applyContestScore, applyContestScoresForExercises } from '../utils/contestScoring.js'
+import { validateSet } from '../utils/validate.js'
 
 // ── get all workouts for logged in user ───────────────
 export const getWorkouts = async (req, res, next) => {
@@ -37,12 +38,19 @@ export const logWorkout = async (req, res, next) => {
       return res.status(400).json({ message: 'Add at least one exercise' })
     }
 
+    for (const ex of exercises) {
+      for (const set of ex.sets) {
+        const err = validateSet(set.reps, set.weight)
+        if (err) return res.status(400).json({ message: err })
+      }
+    }
+
     const cleanedExercises = exercises.map(ex => ({
       ...ex,
       sets: ex.sets.map(set => ({
         ...set,
-        reps:   parseFloat(set.reps)   || 0,
-        weight: parseFloat(set.weight) || 0,
+        reps:   parseFloat(set.reps),
+        weight: parseFloat(set.weight),
       }))
     }))
 
@@ -94,11 +102,18 @@ export const updateWorkout = async (req, res, next) => {
 
     const { exercises } = req.body
 
+    for (const ex of exercises) {
+      for (const set of ex.sets) {
+        const err = validateSet(set.reps, set.weight)
+        if (err) return res.status(400).json({ message: err })
+      }
+    }
+
     const cleanedExercises = exercises.map(ex => ({
       ...ex,
       sets: ex.sets.map(set => ({
-        reps:   parseFloat(set.reps)   || 0,
-        weight: parseFloat(set.weight) || 0,
+        reps:   parseFloat(set.reps),
+        weight: parseFloat(set.weight),
       }))
     }))
 
@@ -115,13 +130,18 @@ export const addSetToToday = async (req, res, next) => {
   try {
     const { exerciseName, bodyPart, notes, set } = req.body
 
-    if (!exerciseName || !set || !set.reps || !set.weight) {
+    if (!exerciseName || !set) {
       return res.status(400).json({ message: 'Exercise name, reps and weight required' })
     }
 
+    const setError = validateSet(set.reps, set.weight)
+    if (setError) {
+      return res.status(400).json({ message: setError })
+    }
+
     const cleanSet = {
-      reps:   parseFloat(set.reps)   || 0,
-      weight: parseFloat(set.weight) || 0,
+      reps:   parseFloat(set.reps),
+      weight: parseFloat(set.weight),
     }
 
     const workout = await Workout.findOne({
@@ -170,6 +190,11 @@ export const updateSetInToday = async (req, res, next) => {
   try {
     const { reps, weight, exerciseName, notes } = req.body
     const { setId } = req.params
+
+    const setError = validateSet(reps, weight)
+    if (setError) {
+      return res.status(400).json({ message: setError })
+    }
 
     const workout = await Workout.findOne({
       userId:    req.user._id,

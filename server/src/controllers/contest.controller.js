@@ -1,6 +1,7 @@
 import Contest from '../models/Contest.model.js'
 import Workout from '../models/Workout.model.js'
 import { nanoid } from 'nanoid'
+import { isNonEmptyString } from '../utils/validate.js'
 
 // ── get all contests for logged in user ───────────────
 export const getContests = async (req, res, next) => {
@@ -59,6 +60,10 @@ export const createContest = async (req, res, next) => {
 export const joinContest = async (req, res, next) => {
   try {
     const { code } = req.body
+
+    if (!isNonEmptyString(code)) {
+      return res.status(404).json({ message: 'Invalid code or contest not found' })
+    }
 
     const contest = await Contest.findOne({ inviteCode: code })
     if (!contest) {

@@ -4,11 +4,11 @@ export default function Landing() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-gray-950 text-white">
 
       {/* Nav */}
       <nav className="flex justify-between items-center px-6 py-4
-                      border-b border-white/5 sticky top-0 bg-[#0a0a0a] z-10">
+                      border-b border-white/5 sticky top-0 bg-gray-950 z-10">
         <span className="text-xl font-bold tracking-[3px] text-red-500">
           IRONLOG
         </span>
@@ -60,7 +60,7 @@ export default function Landing() {
         <div className="flex justify-center">
           <div className="bg-[#111] border border-white/5 rounded-[28px]
                           w-56 overflow-hidden shadow-2xl">
-            <div className="bg-[#0a0a0a] px-4 py-3 text-right
+            <div className="bg-gray-950 px-4 py-3 text-right
                             text-xs text-white/20">
               9:41
             </div>

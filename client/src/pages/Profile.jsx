@@ -1,8 +1,9 @@
-import { useMemo }      from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate }  from 'react-router-dom'
 import AppLayout        from '../components/layout/AppLayout'
-import { useAuth }      from '../context/AuthContext'
+import { useAuth }      from '../hooks/useAuth'
 import { useWorkouts }  from '../hooks/useWorkouts'
+import AccountSettings  from '../components/profile/AccountSettings'
 import {
   getTotalVolume,
   getTotalSets,
@@ -57,6 +58,7 @@ export default function Profile() {
   const { user, logout }              = useAuth()
   const { workouts, loading }         = useWorkouts()
   const navigate                      = useNavigate()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const totalVolume   = useMemo(() => getTotalVolume(workouts),     [workouts])
   const totalSets     = useMemo(() => getTotalSets(workouts),       [workouts])
@@ -142,7 +144,28 @@ export default function Profile() {
                        tracking-wider mb-3">
           Account
         </h2>
-        <LogoutButton onLogout={handleLogout} />
+
+        <div className="space-y-3">
+          <button
+            onClick={() => setSettingsOpen(prev => !prev)}
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl
+                       p-4 text-left flex justify-between items-center
+                       active:border-gray-700 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-300">
+              Account settings
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform duration-200 ${settingsOpen ? 'rotate-90' : ''}`}>
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+
+          {settingsOpen && <AccountSettings />}
+
+          <LogoutButton onLogout={handleLogout} />
+        </div>
       </div>
 
       {/* App version */}
