@@ -9,7 +9,7 @@ import { useAuth }          from '../hooks/useAuth'
 // countdown timer
 const getCountdown = (endDate) => {
   const diff = new Date(endDate) - new Date()
-  if (diff <= 0) return { label: 'Ended', color: 'text-gray-600' }
+  if (diff <= 0) return { label: 'Ended', color: 'text-gray-400' }
   const days  = Math.floor(diff / 86400000)
   const hours = Math.floor((diff % 86400000) / 3600000)
   if (days > 0) return { label: `${days}d ${hours}h left`, color: 'text-green-400' }
@@ -71,8 +71,8 @@ export default function Contests() {
       {/* Header */}
       <div className="flex justify-between items-center px-4 pt-10 pb-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Contests</h1>
-          <p className="text-xs text-gray-600 mt-0.5">Compete with friends</p>
+          <h1 className="font-display text-xl font-bold text-white">Contests</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Compete with friends</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
@@ -113,7 +113,7 @@ export default function Contests() {
 
       {/* Contest list */}
       <div className="px-4">
-        <h2 className="text-xs font-medium text-gray-600 uppercase
+        <h2 className="text-xs font-medium text-gray-400 uppercase
                        tracking-wider mb-3">
           Your contests
         </h2>
@@ -135,7 +135,7 @@ export default function Contests() {
           <div className="text-center py-16">
             <p className="text-3xl mb-3">🏆</p>
             <p className="text-gray-400 font-medium">No contests yet</p>
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1">
               Create one or join with an invite code
             </p>
           </div>
@@ -158,7 +158,7 @@ export default function Contests() {
                       <h3 className="font-semibold text-white text-sm">
                         {contest.name}
                       </h3>
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         {contest.exercise}
                       </p>
                     </div>
@@ -197,7 +197,7 @@ export default function Contests() {
                         </div>
                       ))}
                     </div>
-                    <span className="text-xs text-gray-600">
+                    <span className="text-xs text-gray-400">
                       {(contest.participants || []).length} athletes
                     </span>
                   </div>
@@ -214,7 +214,7 @@ export default function Contests() {
                                        tracking-widest">
                         {contest.inviteCode}
                       </span>
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-gray-400">
                         {copiedId === contest._id ? '✓ Copied' : 'Copy code'}
                       </span>
                     </button>

@@ -50,13 +50,13 @@ export default function Dashboard() {
       <div className="flex justify-between items-center px-4 pt-10 pb-6">
         <div>
           <p className="text-gray-500 text-sm">Welcome back</p>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="font-display text-2xl font-bold text-white">
             {user?.username ?? 'Athlete'} 👋
           </h1>
         </div>
         <button
           onClick={logout}
-          className="text-xs text-gray-600 border border-gray-800 px-3 py-1.5 rounded-full"
+          className="text-xs text-gray-400 border border-gray-800 px-3 py-1.5 rounded-full"
         >
           Logout
         </button>
@@ -105,7 +105,7 @@ export default function Dashboard() {
           <div className="text-center py-16">
             <p className="text-4xl mb-3">🏋️</p>
             <p className="text-gray-400 font-medium">No workouts yet</p>
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1">
               Log your first session to get started
             </p>
           </div>

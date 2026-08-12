@@ -83,7 +83,7 @@ export default function Leaderboard({ contest, onClose }) {
           <div className="flex justify-between items-start">
             <div>
               <h2 className="font-semibold text-white">{contest.name}</h2>
-              <p className="text-xs text-gray-600 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 {contest.exercise} · Heaviest single lift
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function Leaderboard({ contest, onClose }) {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-400 mb-1">
                       Weight (kg)
                     </label>
                     <input
@@ -152,7 +152,7 @@ export default function Leaderboard({ contest, onClose }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-400 mb-1">
                       Reps
                     </label>
                     <input
@@ -223,8 +223,8 @@ export default function Leaderboard({ contest, onClose }) {
 
           {!loading && entries.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-gray-600 text-sm">No entries yet</p>
-              <p className="text-gray-700 text-xs mt-1">
+              <p className="text-gray-400 text-sm">No entries yet</p>
+              <p className="text-gray-500 text-xs mt-1">
                 Be the first to log a lift
               </p>
             </div>
@@ -245,7 +245,7 @@ export default function Leaderboard({ contest, onClose }) {
                 <div className="flex items-center gap-3">
                   <span className="text-lg w-8 text-center">
                     {i < 3 ? MEDALS[i] : (
-                      <span className="text-sm text-gray-600 font-medium">
+                      <span className="text-sm text-gray-400 font-medium">
                         {i + 1}
                       </span>
                     )}
@@ -264,7 +264,7 @@ export default function Leaderboard({ contest, onClose }) {
                     <p className={`text-sm font-medium ${isMe ? 'text-red-400' : 'text-white'}`}>
                       {entry.username} {isMe && '(you)'}
                     </p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-400">
                       {entry.reps > 0 ? `${entry.reps} reps` : 'No lift yet'}
                     </p>
                   </div>

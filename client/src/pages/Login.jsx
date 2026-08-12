@@ -87,7 +87,7 @@ export default function Login() {
 
   return(
     <AuthShell>
-        <h1 className="text-5xl font-black text-red-500 text-center tracking-widest">IRONLOG</h1>
+        <h1 className="font-display text-5xl font-black text-red-500 text-center tracking-widest">IRONLOG</h1>
         <p className="text-center text-sm text-gray-500 mt-2 mb-8">
           Track lifts. Crush friends.
         </p>
@@ -125,7 +125,7 @@ export default function Login() {
             {/* add this after the submit button in both login and register panels */}
 <div className="flex items-center gap-3 my-2">
   <div className="flex-1 h-px bg-gray-800"/>
-  <span className="text-xs text-gray-600">or</span>
+  <span className="text-xs text-gray-400">or</span>
   <div className="flex-1 h-px bg-gray-800"/>
 </div>
 
@@ -163,7 +163,7 @@ export default function Login() {
             {/* add this after the submit button in both login and register panels */}
 <div className="flex items-center gap-3 my-2">
   <div className="flex-1 h-px bg-gray-800"/>
-  <span className="text-xs text-gray-600">or</span>
+  <span className="text-xs text-gray-400">or</span>
   <div className="flex-1 h-px bg-gray-800"/>
 </div>
 

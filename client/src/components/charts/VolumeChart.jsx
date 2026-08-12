@@ -20,7 +20,7 @@ export default function VolumeChart({ data }) {
   if (!data || data.length === 0) {
     return (
       <div className="h-40 flex items-center justify-center">
-        <p className="text-gray-600 text-sm">No data yet</p>
+        <p className="text-gray-400 text-sm">No data yet</p>
       </div>
     )
   }
