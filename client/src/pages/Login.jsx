@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { loginUser, registerUser } from '../api/auth.api'
 import { useGoogleLogin } from '@react-oauth/google'
@@ -112,6 +112,9 @@ export default function Login() {
           <div className="flex flex-col gap-4">
             <Field label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
             <Field label="Password" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
+            <Link to="/forgot-password" className="text-xs text-gray-500 hover:text-gray-300 -mt-2 self-end">
+              Forgot password?
+            </Link>
             <button onClick={handleLogin} disabled={loading}
               className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 py-3 rounded-lg font-medium transition-colors">
               {loading ? 'Logging in...' : 'Log in'}

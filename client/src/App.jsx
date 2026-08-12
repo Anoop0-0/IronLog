@@ -4,6 +4,8 @@ import RestTimer       from './components/ui/RestTimer'
 import { useAuth }     from './context/AuthContext'
 import Landing         from './pages/Landing'
 import Login           from './pages/Login'
+import ForgotPassword  from './pages/ForgotPassword'
+import ResetPassword   from './pages/ResetPassword'
 import Dashboard       from './pages/Dashboard'
 import WorkoutLogger   from './pages/WorkoutLogger'
 import Progress        from './pages/Progress'
@@ -18,6 +20,8 @@ export default function App() {
       <Routes>
         <Route path="/"          element={<Landing />} />
         <Route path="/login"     element={<Login />} />
+        <Route path="/forgot-password"        element={<ForgotPassword />} />
+        <Route path="/reset-password/:token"  element={<ResetPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/log"       element={<ProtectedRoute><WorkoutLogger /></ProtectedRoute>} />
         <Route path="/progress"  element={<ProtectedRoute><Progress /></ProtectedRoute>} />

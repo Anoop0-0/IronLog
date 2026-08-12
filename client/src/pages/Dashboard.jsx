@@ -39,8 +39,8 @@ export default function Dashboard() {
     try {
       const res = await updateWorkout(id, { exercises })
       replaceWorkout(res.data)
-    } catch {
-      setActionError('Failed to save changes — try again')
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Failed to save changes — try again')
     }
   }
 

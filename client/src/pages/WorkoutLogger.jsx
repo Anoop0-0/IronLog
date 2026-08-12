@@ -173,8 +173,8 @@ export default function WorkoutLogger() {
       ))
 
       startRestTimer()
-    } catch {
-      setError('Failed to save set — check your connection and try again')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save set — check your connection and try again')
     }
   }
 
@@ -320,6 +320,8 @@ function ExerciseCard({
               type="number"
               inputMode="numeric"
               placeholder="0"
+              min="1"
+              max="1000"
               value={set.reps}
               onChange={e => onUpdateSet(set.id, 'reps', e.target.value)}
               disabled={set.saved && !set.editing}
@@ -334,6 +336,8 @@ function ExerciseCard({
               type="number"
               inputMode="decimal"
               placeholder="0"
+              min="1"
+              max="2000"
               value={set.weight}
               onChange={e => onUpdateSet(set.id, 'weight', e.target.value)}
               disabled={set.saved && !set.editing}

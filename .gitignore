@@ -9,6 +9,7 @@ server/.env
 
 # build output
 client/dist
+client/dev-dist
 
 # mac
 .DS_Store

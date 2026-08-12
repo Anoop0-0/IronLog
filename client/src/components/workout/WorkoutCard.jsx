@@ -64,6 +64,8 @@ function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
       <input
         type="number"
         inputMode="numeric"
+        min="1"
+        max="1000"
         value={set.reps}
         onChange={e => onChange('reps', e.target.value)}
         placeholder="reps"
@@ -74,6 +76,8 @@ function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
       <input
         type="number"
         inputMode="decimal"
+        min="1"
+        max="2000"
         value={set.weight}
         onChange={e => onChange('weight', e.target.value)}
         placeholder="kg"

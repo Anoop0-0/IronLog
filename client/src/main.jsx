@@ -5,6 +5,11 @@ import { TimerProvider } from './context/TimerContext'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { registerSW } from 'virtual:pwa-register'
+
+// silently refresh the cached app shell when a new version deploys —
+// this is what actually makes the installed PWA work offline
+registerSW({ immediate: true })
 
 
 createRoot(document.getElementById('root')).render(
