@@ -238,6 +238,50 @@ export const updateSetInToday = async (req, res, next) => {
   }
 }
 
+// ── delete a single set from today's workout ──────────
+export const deleteSetFromToday = async (req, res, next) => {
+  try {
+    const { exerciseName } = req.body
+    const { setId } = req.params
+
+    if (!exerciseName) {
+      return res.status(400).json({ message: 'Exercise name required' })
+    }
+
+    const workout = await Workout.findOne({
+      userId:    req.user._id,
+      createdAt: { $gte: getTodayWindowStart() }
+    }).sort({ createdAt: -1 })
+
+    if (!workout) {
+      return res.status(404).json({ message: 'No workout found for today' })
+    }
+
+    const exercise = workout.exercises.find(ex => ex.name === exerciseName)
+    if (!exercise) {
+      return res.status(404).json({ message: 'Exercise not found in today\'s workout' })
+    }
+
+    const before = exercise.sets.length
+    exercise.sets = exercise.sets.filter(s => s._id.toString() !== setId)
+
+    if (exercise.sets.length === before) {
+      return res.status(404).json({ message: 'Set not found' })
+    }
+
+    // deleting the last set leaves an exercise with nothing in it — drop
+    // the whole entry rather than keep an empty exercise around
+    if (exercise.sets.length === 0) {
+      workout.exercises = workout.exercises.filter(ex => ex.name !== exerciseName)
+    }
+
+    await workout.save()
+    res.json(workout)
+  } catch (err) {
+    next(err)
+  }
+}
+
 // ── update just the note text for an exercise in today's workout ──
 export const updateExerciseNotesInToday = async (req, res, next) => {
   try {

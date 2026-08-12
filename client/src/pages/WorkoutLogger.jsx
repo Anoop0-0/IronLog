@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
+import Stepper         from '../components/workout/Stepper'
 import {
-  addSetToToday, getTodayWorkout, updateSetInToday,
+  addSetToToday, getTodayWorkout, updateSetInToday, deleteSetFromToday,
   updateExerciseNotes, deleteExerciseFromToday,
 } from '../api/workouts.api'
 import { useTimer }    from '../hooks/useTimer'
-import { newSet }      from '../utils/workoutHelpers'
 import { nanoid }      from 'nanoid'
 
 const newExercise = (name, bodyPart) => ({
-  id:       nanoid(),
+  id:            nanoid(),
   name,
   bodyPart,
-  notes:    '',
-  sets:     [newSet()],
+  notes:         '',
+  sets:          [],   // saved sets only: [{ id, originalId, reps, weight }]
+  draftWeight:   '',
+  draftReps:     '',
+  selectedSetId: null, // id of the set loaded into the entry panel, or null for "new set"
 })
 
 export default function WorkoutLogger() {
@@ -32,20 +35,26 @@ export default function WorkoutLogger() {
         const todayWorkout = res.data
 
         if (todayWorkout) {
-          setExercises(todayWorkout.exercises.map(ex => ({
-            id:       ex._id?.toString() || nanoid(),
-            name:     ex.name,
-            bodyPart: ex.bodyPart,
-            notes:    ex.notes || '',
-            sets:     ex.sets.map(s => ({
+          setExercises(todayWorkout.exercises.map(ex => {
+            const sets = ex.sets.map(s => ({
               id:         s._id?.toString() || nanoid(),
               originalId: s._id?.toString(),
               reps:       s.reps,
               weight:     s.weight,
-              saved:      true,
-              editing:    false,
             }))
-          })))
+            const last = sets[sets.length - 1]
+
+            return {
+              id:            ex._id?.toString() || nanoid(),
+              name:          ex.name,
+              bodyPart:      ex.bodyPart,
+              notes:         ex.notes || '',
+              sets,
+              draftWeight:   last ? last.weight : '',
+              draftReps:     last ? last.reps   : '',
+              selectedSetId: null,
+            }
+          }))
         }
       } catch {
         setError('Failed to load today\'s workout')
@@ -56,12 +65,18 @@ export default function WorkoutLogger() {
     loadToday()
   }, [])
 
+  const updateExercise = (exId, patch) => {
+    setExercises(prev => prev.map(ex =>
+      ex.id === exId ? { ...ex, ...(typeof patch === 'function' ? patch(ex) : patch) } : ex
+    ))
+  }
+
   const handleAddExercise = (name, bodyPart) => {
     setExercises(prev => [...prev, newExercise(name, bodyPart)])
   }
 
   const handleDeleteExercise = async (exercise) => {
-    const hasSavedSets = exercise.sets.some(s => s.originalId)
+    const hasSavedSets = exercise.sets.length > 0
 
     if (hasSavedSets) {
       try {
@@ -75,47 +90,38 @@ export default function WorkoutLogger() {
     setExercises(prev => prev.filter(ex => ex.id !== exercise.id))
   }
 
-  const handleAddSet = (exId) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId
-        ? { ...ex, sets: [...ex.sets, newSet()] }
-        : ex
-    ))
+  const handleDraftChange = (exId, field, value) => {
+    updateExercise(exId, { [field]: value })
   }
 
-  const handleDeleteSet = (exId, setId) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId
-        ? { ...ex, sets: ex.sets.filter(s => s.id !== setId) }
-        : ex
-    ))
+  const handleStep = (exId, field, delta) => {
+    updateExercise(exId, ex => {
+      const next = Math.max(0, (parseFloat(ex[field]) || 0) + delta)
+      return { [field]: Math.round(next * 10) / 10 }
+    })
   }
 
-  const handleUpdateSet = (exId, setId, field, value) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId
-        ? {
-            ...ex,
-            sets: ex.sets.map(s =>
-              s.id === setId ? { ...s, [field]: value } : s
-            )
-          }
-        : ex
-    ))
+  const handleSelectSet = (exId, set) => {
+    updateExercise(exId, ex => ex.selectedSetId === set.id
+      // tapping the already-selected row again backs out of edit mode
+      ? { selectedSetId: null, draftWeight: '', draftReps: '' }
+      : { selectedSetId: set.id, draftWeight: set.weight, draftReps: set.reps }
+    )
+  }
+
+  const handleClearDraft = (exId) => {
+    updateExercise(exId, { draftWeight: '', draftReps: '' })
   }
 
   const handleNotes = (exId, value) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId ? { ...ex, notes: value } : ex
-    ))
+    updateExercise(exId, { notes: value })
   }
 
-  // notes for an unsaved exercise ride along with its first saved set;
-  // for an exercise that already has saved sets there's no later save
-  // point to piggyback on, so persist the note explicitly on blur
+  // notes for a brand-new exercise ride along with its first saved set;
+  // an exercise that already has saved sets has no later save point to
+  // piggyback on, so persist the note explicitly on blur
   const handleNotesBlur = async (exercise) => {
-    const hasSavedSets = exercise.sets.some(s => s.originalId)
-    if (!hasSavedSets) return
+    if (exercise.sets.length === 0) return
 
     try {
       await updateExerciseNotes({ exerciseName: exercise.name, notes: exercise.notes })
@@ -124,57 +130,70 @@ export default function WorkoutLogger() {
     }
   }
 
-  const handleEditSet = (exId, setId) => {
-    setExercises(prev => prev.map(ex =>
-      ex.id === exId
-        ? {
-            ...ex,
-            sets: ex.sets.map(s =>
-              s.id === setId
-                ? { ...s, editing: true, saved: false }
-                : s
-            )
-          }
-        : ex
-    ))
-  }
-
-  const handleSaveSet = async (exercise, set) => {
-    if (!set.reps || !set.weight) return
+  const handleSaveDraft = async (exercise) => {
+    const { draftWeight, draftReps, selectedSetId } = exercise
+    if (!draftWeight || !draftReps) return
     setError('')
 
     try {
-      if (set.editing && set.originalId) {
+      if (selectedSetId) {
+        const set = exercise.sets.find(s => s.id === selectedSetId)
         await updateSetInToday(set.originalId, {
           exerciseName: exercise.name,
-          reps:         set.reps,
-          weight:       set.weight,
+          reps:         draftReps,
+          weight:       draftWeight,
         })
+
+        updateExercise(exercise.id, ex => ({
+          sets: ex.sets.map(s =>
+            s.id === selectedSetId ? { ...s, reps: draftReps, weight: draftWeight } : s
+          ),
+          selectedSetId: null,
+        }))
       } else {
-        await addSetToToday({
+        const res = await addSetToToday({
           exerciseName: exercise.name,
           bodyPart:     exercise.bodyPart,
           notes:        exercise.notes,
-          set:          { reps: set.reps, weight: set.weight },
+          set:          { reps: draftReps, weight: draftWeight },
         })
+
+        // pull the real Mongo _id for the set we just added so a later
+        // edit/delete on it hits the right document instead of re-adding
+        const savedExercise = res.data.exercises.find(e => e.name === exercise.name)
+        const savedSet       = savedExercise.sets[savedExercise.sets.length - 1]
+
+        updateExercise(exercise.id, ex => ({
+          sets: [...ex.sets, {
+            id:         savedSet._id,
+            originalId: savedSet._id,
+            reps:       savedSet.reps,
+            weight:     savedSet.weight,
+          }],
+        }))
+
+        startRestTimer()
       }
-
-      setExercises(prev => prev.map(ex =>
-        ex.id === exercise.id
-          ? {
-              ...ex,
-              sets: ex.sets.map(s =>
-                s.id === set.id
-                  ? { ...s, saved: true, editing: false }
-                  : s
-              )
-            }
-          : ex
-      ))
-
-      startRestTimer()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save set — check your connection and try again')
+    }
+  }
+
+  const handleDeleteSelected = async (exercise) => {
+    const set = exercise.sets.find(s => s.id === exercise.selectedSetId)
+    if (!set) return
+    setError('')
+
+    try {
+      await deleteSetFromToday(set.originalId, exercise.name)
+      updateExercise(exercise.id, ex => ({
+        sets:          ex.sets.filter(s => s.id !== set.id),
+        selectedSetId: null,
+        draftWeight:   '',
+        draftReps:     '',
+      }))
+    } catch {
+      setError('Failed to delete set — try again')
     }
   }
 
@@ -223,15 +242,14 @@ export default function WorkoutLogger() {
               setExpandedNote(prev => prev === ex.id ? null : ex.id)
             }
             onDeleteExercise={() => handleDeleteExercise(ex)}
-            onAddSet={() => handleAddSet(ex.id)}
-            onDeleteSet={(setId) => handleDeleteSet(ex.id, setId)}
-            onUpdateSet={(setId, field, val) =>
-              handleUpdateSet(ex.id, setId, field, val)
-            }
+            onDraftChange={(field, val) => handleDraftChange(ex.id, field, val)}
+            onStep={(field, delta) => handleStep(ex.id, field, delta)}
+            onSelectSet={(set) => handleSelectSet(ex.id, set)}
+            onClearDraft={() => handleClearDraft(ex.id)}
             onNoteChange={(val) => handleNotes(ex.id, val)}
             onNoteBlur={() => handleNotesBlur(ex)}
-            onSaveSet={(set) => handleSaveSet(ex, set)}
-            onEditSet={(setId) => handleEditSet(ex.id, setId)}
+            onSaveDraft={() => handleSaveDraft(ex)}
+            onDeleteSelected={() => handleDeleteSelected(ex)}
           />
         ))}
 
@@ -258,10 +276,13 @@ export default function WorkoutLogger() {
 function ExerciseCard({
   exercise, noteOpen,
   onToggleNote, onDeleteExercise,
-  onAddSet, onDeleteSet,
-  onUpdateSet, onNoteChange, onNoteBlur,
-  onSaveSet, onEditSet
+  onDraftChange, onStep, onSelectSet, onClearDraft,
+  onNoteChange, onNoteBlur,
+  onSaveDraft, onDeleteSelected,
 }) {
+  const isEditing = exercise.selectedSetId !== null
+  const canSave   = parseFloat(exercise.draftWeight) > 0 && parseFloat(exercise.draftReps) > 0
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <div className="flex justify-between items-start px-4 pt-4 pb-3">
@@ -269,15 +290,15 @@ function ExerciseCard({
           <h3 className="font-semibold text-white">{exercise.name}</h3>
           <span className="text-xs text-gray-400">{exercise.bodyPart}</span>
         </div>
-        <div className="flex gap-3 items-center mt-0.5">
+        <div className="flex gap-1 items-center mt-0.5">
           <button
             onClick={onToggleNote}
-            className={`text-xs transition-colors
+            className={`text-xs px-2 py-2 -my-2 transition-colors
               ${noteOpen ? 'text-red-400' : 'text-gray-400'}`}
           >
             Notes
           </button>
-          <button onClick={onDeleteExercise} className="text-gray-500 active:text-red-500">
+          <button onClick={onDeleteExercise} className="text-gray-500 active:text-red-500 p-2 -my-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.8"
               strokeLinecap="round" strokeLinejoin="round">
@@ -302,107 +323,88 @@ function ExerciseCard({
         </div>
       )}
 
-      <div className="grid grid-cols-12 px-4 pb-1">
-        <span className="col-span-1 text-xs text-gray-400">Set</span>
-        <span className="col-span-4 text-xs text-gray-400">Reps</span>
-        <span className="col-span-4 text-xs text-gray-400">Weight</span>
-        <span className="col-span-3"></span>
+      {/* Entry panel — big steppers instead of a cramped inline row */}
+      <div className="px-4 pt-1 pb-4 space-y-4">
+        <Stepper
+          label="Weight (kg)"
+          value={exercise.draftWeight}
+          onChange={(v) => onDraftChange('draftWeight', v)}
+          onStep={(delta) => onStep('draftWeight', delta)}
+          step={2.5}
+        />
+        <Stepper
+          label="Reps"
+          value={exercise.draftReps}
+          onChange={(v) => onDraftChange('draftReps', v)}
+          onStep={(delta) => onStep('draftReps', delta)}
+          step={1}
+        />
+
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <button
+                onClick={onSaveDraft}
+                disabled={!canSave}
+                className="flex-1 bg-green-700 disabled:opacity-30 text-white
+                           font-semibold py-3.5 rounded-xl active:scale-95 transition-all"
+              >
+                Update
+              </button>
+              <button
+                onClick={onDeleteSelected}
+                className="flex-1 bg-red-700 text-white font-semibold py-3.5
+                           rounded-xl active:scale-95 transition-all"
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onSaveDraft}
+                disabled={!canSave}
+                className="flex-1 bg-green-700 disabled:opacity-30 text-white
+                           font-semibold py-3.5 rounded-xl active:scale-95 transition-all"
+              >
+                Save
+              </button>
+              <button
+                onClick={onClearDraft}
+                className="flex-1 bg-gray-800 border border-gray-700 text-gray-300
+                           font-semibold py-3.5 rounded-xl active:scale-95 transition-all"
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="px-4 space-y-2 pb-3">
-        {exercise.sets.map((set, i) => (
-          <div key={set.id} className="grid grid-cols-12 items-center gap-1">
-            <span className="col-span-1 text-xs text-gray-400 font-medium">
-              {i + 1}
-            </span>
-
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
-              min="1"
-              max="1000"
-              value={set.reps}
-              onChange={e => onUpdateSet(set.id, 'reps', e.target.value)}
-              disabled={set.saved && !set.editing}
-              className={`col-span-4 border rounded-lg px-2 py-2 text-sm
-                          text-white text-center outline-none
-                          ${set.saved && !set.editing
-                            ? 'bg-gray-800/50 border-gray-800 text-gray-500'
-                            : 'bg-gray-800 border-gray-700 focus:border-red-700'}`}
-            />
-
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder="0"
-              min="1"
-              max="2000"
-              value={set.weight}
-              onChange={e => onUpdateSet(set.id, 'weight', e.target.value)}
-              disabled={set.saved && !set.editing}
-              className={`col-span-4 border rounded-lg px-2 py-2 text-sm
-                          text-white text-center outline-none
-                          ${set.saved && !set.editing
-                            ? 'bg-gray-800/50 border-gray-800 text-gray-500'
-                            : 'bg-gray-800 border-gray-700 focus:border-red-700'}`}
-            />
-
-            <div className="col-span-3 flex justify-end gap-1">
-              {!set.saved ? (
-                <>
-                  <button
-                    onClick={() => onSaveSet(set)}
-                    disabled={!set.reps || !set.weight}
-                    className="bg-green-700 disabled:opacity-30 text-white
-                               text-xs px-2 py-1.5 rounded-lg active:scale-95
-                               transition-all"
-                  >
-                    Save
-                  </button>
-                  {exercise.sets.length > 1 && (
-                    <button
-                      onClick={() => onDeleteSet(set.id)}
-                      className="text-gray-500 active:text-red-500 p-1"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2"
-                        strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  )}
-                </>
-              ) : set.editing ? (
-                <button
-                  onClick={() => onSaveSet(set)}
-                  disabled={!set.reps || !set.weight}
-                  className="bg-blue-600 disabled:opacity-30 text-white
-                             text-xs px-2 py-1.5 rounded-lg active:scale-95
-                             transition-all"
-                >
-                  Update
-                </button>
-              ) : (
-                <button
-                  onClick={() => onEditSet(set.id)}
-                  className="text-green-500 text-xs px-2 active:text-green-300"
-                >
-                  ✓
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={onAddSet}
-        className="w-full border-t border-gray-800 py-3 text-xs text-gray-400
-                   active:text-red-400 transition-colors"
-      >
-        + Add set
-      </button>
+      {/* Saved sets — tap a row to load it back into the entry panel */}
+      {exercise.sets.length > 0 && (
+        <div className="border-t border-gray-800">
+          {exercise.sets.map((set, i) => (
+            <button
+              key={set.id}
+              onClick={() => onSelectSet(set)}
+              className={`w-full flex items-center px-4 py-3 text-left
+                         border-b border-gray-800 last:border-0 transition-colors
+                         ${exercise.selectedSetId === set.id
+                           ? 'bg-red-950/30'
+                           : 'active:bg-gray-800/50'}`}
+            >
+              <span className="w-8 text-xs text-gray-400 font-medium">{i + 1}</span>
+              <span className="flex-1 text-sm text-white text-center">
+                {set.weight}<span className="text-gray-500 text-xs ml-1">kg</span>
+              </span>
+              <span className="flex-1 text-sm text-white text-center">
+                {set.reps}<span className="text-gray-500 text-xs ml-1">reps</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
