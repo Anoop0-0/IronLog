@@ -32,20 +32,25 @@ export default function ExercisePicker({onAdd,onClose}){
         </div>
 
         {/* Body part tabs — horizontal scroll */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
-          {BODY_PARTS.map(part => (
-            <button
-              key={part}
-              onClick={() => { setSelectedPart(part); setSearch('') }}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium
-                          transition-colors
-                          ${selectedBodyPart === part
-                            ? 'bg-red-600 text-white'
-                            : 'bg-gray-800 text-gray-400'}`}
-            >
-              {part}
-            </button>
-          ))}
+        <div className="relative">
+          <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
+            {BODY_PARTS.map(part => (
+              <button
+                key={part}
+                onClick={() => { setSelectedPart(part); setSearch('') }}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium
+                            transition-colors
+                            ${selectedBodyPart === part
+                              ? 'bg-red-600 text-white'
+                              : 'bg-gray-800 text-gray-400'}`}
+              >
+                {part}
+              </button>
+            ))}
+          </div>
+          {/* fade hint that there's more to scroll to the right */}
+          <div className="pointer-events-none absolute top-0 right-0 bottom-3 w-8
+                          bg-gradient-to-l from-gray-900 to-transparent" />
         </div>
 
         {/* Exercise list — scrollable */}

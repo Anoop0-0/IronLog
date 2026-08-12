@@ -143,17 +143,21 @@ export default function RestTimer() {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button — translucent + blurred when idle so it dims
+          whatever's underneath instead of fully hiding it (it's a fixed
+          element, so page content inevitably scrolls behind it). Goes
+          fully solid only while running/finished, when glanceability
+          matters more than what's behind it. */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-28 right-4 z-40 w-14 h-14 rounded-full
+        className={`fixed bottom-28 right-4 z-40 rounded-full
                     shadow-lg flex items-center justify-center
                     transition-all active:scale-95
                     ${running
-                      ? 'bg-blue-600 animate-pulse'
+                      ? 'w-14 h-14 bg-blue-600 animate-pulse'
                       : isFinished
-                      ? 'bg-red-600'
-                      : 'bg-gray-800 border border-gray-700'}`}
+                      ? 'w-14 h-14 bg-red-600'
+                      : 'w-11 h-11 bg-gray-800/60 backdrop-blur-md border border-gray-700/60'}`}
       >
         {running ? (
           <span className="text-white text-xs font-bold font-mono">

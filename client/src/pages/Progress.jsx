@@ -88,20 +88,24 @@ export default function Progress() {
             </div>
 
             {/* Body part filter pills */}
-            <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-1">
-              {['All', ...BODY_PARTS].map(part => (
-                <button
-                  key={part}
-                  onClick={() => setBodyFilter(part)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs
-                              font-medium transition-colors
-                              ${bodyFilter === part
-                                ? 'bg-red-600 text-white'
-                                : 'bg-gray-800 text-gray-400'}`}
-                >
-                  {part}
-                </button>
-              ))}
+            <div className="relative mb-4">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {['All', ...BODY_PARTS].map(part => (
+                  <button
+                    key={part}
+                    onClick={() => setBodyFilter(part)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs
+                                font-medium transition-colors
+                                ${bodyFilter === part
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-gray-800 text-gray-400'}`}
+                  >
+                    {part}
+                  </button>
+                ))}
+              </div>
+              <div className="pointer-events-none absolute top-0 right-0 bottom-1 w-8
+                              bg-gradient-to-l from-gray-950 to-transparent" />
             </div>
 
             {/* PR list */}

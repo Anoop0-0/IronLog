@@ -95,22 +95,26 @@ export default function CreateContestModal({ onClose, onCreated }) {
             <label className="block text-xs text-gray-500 mb-1.5">
               Body part
             </label>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-              {BODY_PARTS.map(part => (
-                <button
-                  key={part}
-                  onClick={() =>
-                    handleChange({ target: { name: 'bodyPart', value: part } })
-                  }
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs
-                              font-medium transition-colors
-                              ${form.bodyPart === part
-                                ? 'bg-red-600 text-white'
-                                : 'bg-gray-800 text-gray-400'}`}
-                >
-                  {part}
-                </button>
-              ))}
+            <div className="relative">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {BODY_PARTS.map(part => (
+                  <button
+                    key={part}
+                    onClick={() =>
+                      handleChange({ target: { name: 'bodyPart', value: part } })
+                    }
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs
+                                font-medium transition-colors
+                                ${form.bodyPart === part
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-gray-800 text-gray-400'}`}
+                  >
+                    {part}
+                  </button>
+                ))}
+              </div>
+              <div className="pointer-events-none absolute top-0 right-0 bottom-1 w-8
+                              bg-gradient-to-l from-gray-900 to-transparent" />
             </div>
           </div>
 
