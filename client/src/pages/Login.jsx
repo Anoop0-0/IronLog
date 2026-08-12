@@ -75,7 +75,7 @@ export default function Login() {
       const res = await googleAuth(response.access_token)
       login(res.data.user, res.data.token)
       navigate('/dashboard')
-    } catch (err) {
+    } catch {
       setServerError('Google login failed. Try again.')
     } finally {
       setLoading(false)

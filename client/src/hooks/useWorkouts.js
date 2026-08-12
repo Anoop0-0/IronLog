@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getWorkouts, deleteWorkout as deleteWorkoutAPI, updateWorkout as updateWorkoutAPI } from '../api/workouts.api'
+import { getWorkouts } from '../api/workouts.api'
 
 export function useWorkouts() {
   const [workouts, setWorkouts] = useState([])
@@ -11,7 +11,7 @@ export function useWorkouts() {
       try {
         const res = await getWorkouts()
         setWorkouts(res.data)
-      } catch (err) {
+      } catch {
         setError('Failed to load workouts')
       } finally {
         setLoading(false)

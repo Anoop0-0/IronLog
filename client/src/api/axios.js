@@ -13,4 +13,18 @@ api.interceptors.request.use((config)=>{
     return config;//important h
 });
 
+// expired/invalid token → clear session and bounce to login instead of
+// leaving every subsequent request silently failing
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && window.location.pathname !== '/login') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

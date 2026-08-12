@@ -21,14 +21,6 @@ export const EXERCISES = {
     'Overhead Press', 'Dumbbell Shoulder Press', 'Lateral Raise',
     'Front Raise', 'Rear Delt Fly', 'Arnold Press', 'Shrugs',
   ],
-  Biceps: [
-    'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl',
-    'Preacher Curl', 'Cable Curl', 'Concentration Curl',
-  ],
-  Triceps: [
-    'Tricep Pushdown', 'Skull Crushers', 'Overhead Tricep Extension',
-    'Close Grip Bench Press', 'Tricep Dips', 'Cable Kickback',
-  ],
   Legs: [
     'Squat', 'Romanian Deadlift', 'Leg Press', 'Lunges',
     'Leg Curl', 'Leg Extension', 'Calf Raises', 'Hip Thrust',

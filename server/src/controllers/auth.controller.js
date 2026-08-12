@@ -17,6 +17,16 @@ export const register=async(req,res,next)=>{
     try{
         const{username,email,password}=req.body
 
+        if(!username || username.trim().length < 3){
+            return res.status(400).json({message:'Username must be at least 3 characters'})
+        }
+        if(!email || !/^\S+@\S+\.\S+$/.test(email)){
+            return res.status(400).json({message:'A valid email is required'})
+        }
+        if(!password || password.length < 6){
+            return res.status(400).json({message:'Password must be at least 6 characters'})
+        }
+
         //check if user already exists
         const existing=await User.findOne({$or:[{username},{email}]})
        if (existing) {
