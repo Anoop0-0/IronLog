@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { resetPassword } from '../api/auth.api'
 import { useAuth } from '../hooks/useAuth'
+import AuthShell from '../components/layout/AuthShell'
 
 export default function ResetPassword() {
   const { token } = useParams()
@@ -37,8 +38,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <AuthShell>
         <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
 
         <h2 className="text-lg font-semibold mb-1">Set a new password</h2>
@@ -87,7 +87,6 @@ export default function ResetPassword() {
         <Link to="/login" className="block text-center text-sm text-gray-500 mt-6 hover:text-gray-300">
           ← Back to login
         </Link>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

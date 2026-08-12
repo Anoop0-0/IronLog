@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { forgotPassword } from '../api/auth.api'
+import AuthShell from '../components/layout/AuthShell'
 
 export default function ForgotPassword() {
   const [email,   setEmail]   = useState('')
@@ -30,8 +31,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <AuthShell>
         <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
 
         <h2 className="text-lg font-semibold mb-1">Forgot password</h2>
@@ -76,7 +76,6 @@ export default function ForgotPassword() {
         <Link to="/login" className="block text-center text-sm text-gray-500 mt-6 hover:text-gray-300">
           ← Back to login
         </Link>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

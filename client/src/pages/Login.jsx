@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { loginUser, registerUser } from '../api/auth.api'
 import { useGoogleLogin } from '@react-oauth/google'
 import { googleAuth }     from '../api/auth.api'
+import AuthShell          from '../components/layout/AuthShell'
 
 export default function Login() {
     const [tab, setTab] = useState('login')
@@ -85,9 +86,11 @@ export default function Login() {
 })
 
   return(
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
+    <AuthShell>
+        <h1 className="text-5xl font-black text-red-500 text-center tracking-widest">IRONLOG</h1>
+        <p className="text-center text-sm text-gray-500 mt-2 mb-8">
+          Track lifts. Crush friends.
+        </p>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-700 mb-6">
@@ -183,8 +186,7 @@ export default function Login() {
 </button>
           </div>
         )}
-      </div>
-    </div>
+    </AuthShell>
   )
 }
 
