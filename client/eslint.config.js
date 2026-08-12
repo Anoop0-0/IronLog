@@ -23,7 +23,10 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // capitalized bindings are assumed to be JSX components — there's no
+      // eslint-plugin-react here to mark <Icon /> as a real usage of `Icon`,
+      // so both declared vars and destructured params need the exemption
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' }],
     },
   },
 ])

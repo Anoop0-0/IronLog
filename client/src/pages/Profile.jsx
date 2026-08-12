@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate }  from 'react-router-dom'
 import AppLayout        from '../components/layout/AppLayout'
-import { useAuth }      from '../context/AuthContext'
+import { useAuth }      from '../hooks/useAuth'
 import { useWorkouts }  from '../hooks/useWorkouts'
 import AccountSettings  from '../components/profile/AccountSettings'
 import {

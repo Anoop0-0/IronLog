@@ -5,7 +5,7 @@ import {
   addSetToToday, getTodayWorkout, updateSetInToday,
   updateExerciseNotes, deleteExerciseFromToday,
 } from '../api/workouts.api'
-import { useTimer }    from '../context/TimerContext'
+import { useTimer }    from '../hooks/useTimer'
 import { newSet }      from '../utils/workoutHelpers'
 import { nanoid }      from 'nanoid'
 

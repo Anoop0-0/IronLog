@@ -1,5 +1,5 @@
 import { useState }     from 'react'
-import { useAuth }      from '../context/AuthContext'
+import { useAuth }      from '../hooks/useAuth'
 import { useWorkouts }  from '../hooks/useWorkouts'
 import AppLayout        from '../components/layout/AppLayout'
 import WorkoutCard      from '../components/workout/WorkoutCard'

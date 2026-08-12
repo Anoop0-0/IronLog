@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useTimer } from '../../context/TimerContext'
+import { useTimer } from '../../hooks/useTimer'
 
 const PRESETS = [
   { label: '60s',  seconds: 60  },
@@ -59,7 +59,10 @@ export default function RestTimer() {
       gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
       oscillator.start(ctx.currentTime)
       oscillator.stop(ctx.currentTime + 0.5)
-    } catch {}
+    } catch {
+      // AudioContext unsupported/blocked (e.g. no user gesture yet) —
+      // the beep is a non-critical enhancement, safe to skip silently
+    }
   }
 
   const vibrate = () => {
@@ -73,9 +76,14 @@ export default function RestTimer() {
     setRunning(true)
   }
 
-  // auto-start when triggerStart changes
+  // auto-start when triggerStart changes — this effect intentionally syncs
+  // local timer state to an external signal: WorkoutLogger increments
+  // triggerStart (via TimerContext) whenever a set is saved elsewhere in
+  // the app. That's exactly what effects are for; the batched setState
+  // calls inside startTimer() are safe here.
   useEffect(() => {
     if (triggerStart > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       startTimer(total)
     }
   }, [triggerStart])

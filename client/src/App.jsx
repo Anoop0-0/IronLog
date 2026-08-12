@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute  from './components/layout/ProtectedRoute'
 import RestTimer       from './components/ui/RestTimer'
-import { useAuth }     from './context/AuthContext'
+import { useAuth }     from './hooks/useAuth'
 import Landing         from './pages/Landing'
 import Login           from './pages/Login'
 import ForgotPassword  from './pages/ForgotPassword'

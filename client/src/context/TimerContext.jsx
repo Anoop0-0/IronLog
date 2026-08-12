@@ -1,6 +1,5 @@
-import { createContext, useContext, useState } from 'react'
-
-const TimerContext = createContext(null)
+import { useState } from 'react'
+import { TimerContext } from './timer-context'
 
 export function TimerProvider({ children }) {
   const [autoStart,    setAutoStart]    = useState(true)
@@ -17,8 +16,4 @@ export function TimerProvider({ children }) {
       {children}
     </TimerContext.Provider>
   )
-}
-
-export function useTimer() {
-  return useContext(TimerContext)
 }
