@@ -14,9 +14,9 @@ import {
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <p className="text-xs text-gray-600 mb-1">{label}</p>
+      <p className="text-xs text-gray-400 mb-1">{label}</p>
       <p className="text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-600 mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -90,17 +90,17 @@ export default function Profile() {
                         text-2xl font-bold text-red-400 mb-3">
           {initials}
         </div>
-        <h1 className="text-xl font-bold text-white">
+        <h1 className="font-display text-xl font-bold text-white">
           {user?.username ?? 'Athlete'}
         </h1>
-        <p className="text-sm text-gray-600 mt-0.5">
+        <p className="text-sm text-gray-400 mt-0.5">
           {user?.email ?? ''}
         </p>
       </div>
 
       {/* Stats grid */}
       <div className="px-4 mb-6">
-        <h2 className="text-xs font-medium text-gray-600 uppercase
+        <h2 className="text-xs font-medium text-gray-400 uppercase
                        tracking-wider mb-3">
           Your stats
         </h2>
@@ -140,7 +140,7 @@ export default function Profile() {
 
       {/* Account section */}
       <div className="px-4 mb-6">
-        <h2 className="text-xs font-medium text-gray-600 uppercase
+        <h2 className="text-xs font-medium text-gray-400 uppercase
                        tracking-wider mb-3">
           Account
         </h2>

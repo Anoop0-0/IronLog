@@ -187,7 +187,7 @@ export default function RestTimer() {
                             border-b border-gray-800 mb-2">
               <div>
                 <p className="text-sm text-white">Auto-start</p>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <p className="text-xs text-gray-400 mt-0.5">
                   Starts automatically when you log a set
                 </p>
               </div>
@@ -244,7 +244,7 @@ export default function RestTimer() {
 
             {/* Presets */}
             <div className="px-4 mb-4">
-              <p className="text-xs text-gray-600 mb-2">Quick select</p>
+              <p className="text-xs text-gray-400 mb-2">Quick select</p>
               <div className="flex gap-2">
                 {PRESETS.map(p => (
                   <button
@@ -264,7 +264,7 @@ export default function RestTimer() {
 
             {/* Custom */}
             <div className="px-4">
-              <p className="text-xs text-gray-600 mb-2">Custom (seconds)</p>
+              <p className="text-xs text-gray-400 mb-2">Custom (seconds)</p>
               <div className="flex gap-2">
                 <input
                   type="number"

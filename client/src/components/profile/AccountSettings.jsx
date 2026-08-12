@@ -117,7 +117,7 @@ function ChangePasswordForm() {
     <SectionCard title={user?.hasPassword ? 'Change password' : 'Set a password'}>
       {message && <Banner type={message.type}>{message.text}</Banner>}
       {!user?.hasPassword && (
-        <p className="text-xs text-gray-600 mb-3">
+        <p className="text-xs text-gray-400 mb-3">
           Your account currently only signs in with Google. Set a password to also log in with email.
         </p>
       )}
@@ -191,7 +191,7 @@ function DeleteAccountSection() {
   return (
     <SectionCard title="Delete account">
       {error && <Banner type="error">{error}</Banner>}
-      <p className="text-xs text-gray-600 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         This permanently deletes your account and workout history. This can't be undone.
       </p>
 

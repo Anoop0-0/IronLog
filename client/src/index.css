@@ -6,6 +6,11 @@
      default gray-950 (#030712, visibly blue-tinted). Standardizing here
      makes bg-gray-950 the one source of truth for the app background. */
   --color-gray-950: #0a0a0a;
+
+  /* generates the `font-display` utility — used only for the wordmark,
+     hero, and page titles. Body text stays on the default sans so the
+     brand's bold personality doesn't fight legibility at small sizes. */
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
 }
 
 html {

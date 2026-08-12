@@ -181,8 +181,8 @@ export default function WorkoutLogger() {
   return (
     <AppLayout>
       <div className="px-4 pt-10 pb-4">
-        <h1 className="text-xl font-bold text-white">Log workout</h1>
-        <p className="text-xs text-gray-600 mt-0.5">
+        <h1 className="font-display text-xl font-bold text-white">Log workout</h1>
+        <p className="text-xs text-gray-400 mt-0.5">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long', month: 'short', day: 'numeric'
           })}
@@ -208,7 +208,7 @@ export default function WorkoutLogger() {
           <div className="text-center py-16">
             <p className="text-4xl mb-3">💪</p>
             <p className="text-gray-400 font-medium">No exercises yet</p>
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1">
               Tap below to add your first exercise
             </p>
           </div>
@@ -267,17 +267,17 @@ function ExerciseCard({
       <div className="flex justify-between items-start px-4 pt-4 pb-3">
         <div>
           <h3 className="font-semibold text-white">{exercise.name}</h3>
-          <span className="text-xs text-gray-600">{exercise.bodyPart}</span>
+          <span className="text-xs text-gray-400">{exercise.bodyPart}</span>
         </div>
         <div className="flex gap-3 items-center mt-0.5">
           <button
             onClick={onToggleNote}
             className={`text-xs transition-colors
-              ${noteOpen ? 'text-red-400' : 'text-gray-600'}`}
+              ${noteOpen ? 'text-red-400' : 'text-gray-400'}`}
           >
             Notes
           </button>
-          <button onClick={onDeleteExercise} className="text-gray-700 active:text-red-500">
+          <button onClick={onDeleteExercise} className="text-gray-500 active:text-red-500">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.8"
               strokeLinecap="round" strokeLinejoin="round">
@@ -303,16 +303,16 @@ function ExerciseCard({
       )}
 
       <div className="grid grid-cols-12 px-4 pb-1">
-        <span className="col-span-1 text-xs text-gray-600">Set</span>
-        <span className="col-span-4 text-xs text-gray-600">Reps</span>
-        <span className="col-span-4 text-xs text-gray-600">Weight</span>
+        <span className="col-span-1 text-xs text-gray-400">Set</span>
+        <span className="col-span-4 text-xs text-gray-400">Reps</span>
+        <span className="col-span-4 text-xs text-gray-400">Weight</span>
         <span className="col-span-3"></span>
       </div>
 
       <div className="px-4 space-y-2 pb-3">
         {exercise.sets.map((set, i) => (
           <div key={set.id} className="grid grid-cols-12 items-center gap-1">
-            <span className="col-span-1 text-xs text-gray-600 font-medium">
+            <span className="col-span-1 text-xs text-gray-400 font-medium">
               {i + 1}
             </span>
 
@@ -363,7 +363,7 @@ function ExerciseCard({
                   {exercise.sets.length > 1 && (
                     <button
                       onClick={() => onDeleteSet(set.id)}
-                      className="text-gray-700 active:text-red-500 p-1"
+                      className="text-gray-500 active:text-red-500 p-1"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2"
@@ -398,7 +398,7 @@ function ExerciseCard({
 
       <button
         onClick={onAddSet}
-        className="w-full border-t border-gray-800 py-3 text-xs text-gray-600
+        className="w-full border-t border-gray-800 py-3 text-xs text-gray-400
                    active:text-red-400 transition-colors"
       >
         + Add set

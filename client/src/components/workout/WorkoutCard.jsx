@@ -45,7 +45,7 @@ function ExerciseRow({ exercise }) {
         <div className="mt-2 space-y-1.5 pl-2">
           {remainingSets.map((set, i) => (
             <div key={i} className="flex justify-between">
-              <span className="text-xs text-gray-600">Set {i + 2}</span>
+              <span className="text-xs text-gray-400">Set {i + 2}</span>
               <span className="text-xs text-gray-500">
                 {set.reps} reps @ {set.weight}kg
               </span>
@@ -60,7 +60,7 @@ function ExerciseRow({ exercise }) {
 function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
   return (
     <div className="grid grid-cols-12 items-center gap-1 py-1">
-      <span className="col-span-2 text-xs text-gray-600">{index + 1}</span>
+      <span className="col-span-2 text-xs text-gray-400">{index + 1}</span>
       <input
         type="number"
         inputMode="numeric"
@@ -89,7 +89,7 @@ function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
         {showDelete && (
           <button
             onClick={onDelete}
-            className="text-gray-700 active:text-red-500 p-1"
+            className="text-gray-500 active:text-red-500 p-1"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2"
@@ -164,8 +164,8 @@ export default function WorkoutCard({ workout, onDelete, onUpdate }) {
       {/* Header */}
       <div className="flex justify-between items-center px-4 pt-4 pb-2">
         <div>
-          <p className="text-xs text-gray-600 mt-0.5">{formatDate(createdAt)}</p>
-          <p className="text-xs text-gray-600">{exercises.length} exercises</p>
+          <p className="text-xs text-gray-400 mt-0.5">{formatDate(createdAt)}</p>
+          <p className="text-xs text-gray-400">{exercises.length} exercises</p>
         </div>
 
         {!editing && (
@@ -227,9 +227,9 @@ export default function WorkoutCard({ workout, onDelete, onUpdate }) {
               <p className="text-sm font-medium text-gray-300 mb-2">{ex.name}</p>
 
               <div className="grid grid-cols-12 mb-1">
-                <span className="col-span-2 text-xs text-gray-600">Set</span>
-                <span className="col-span-4 text-xs text-gray-600 text-center">Reps</span>
-                <span className="col-span-4 text-xs text-gray-600 text-center">kg</span>
+                <span className="col-span-2 text-xs text-gray-400">Set</span>
+                <span className="col-span-4 text-xs text-gray-400 text-center">Reps</span>
+                <span className="col-span-4 text-xs text-gray-400 text-center">kg</span>
               </div>
 
               {ex.sets.map((set, setIndex) => (
@@ -245,7 +245,7 @@ export default function WorkoutCard({ workout, onDelete, onUpdate }) {
 
               <button
                 onClick={() => addSet(exIndex)}
-                className="text-xs text-gray-600 active:text-red-400
+                className="text-xs text-gray-400 active:text-red-400
                            transition-colors mt-1"
               >
                 + Add set

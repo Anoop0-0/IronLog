@@ -32,7 +32,7 @@ export default function ForgotPassword() {
 
   return (
     <AuthShell>
-        <h1 className="text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
+        <h1 className="font-display text-5xl font-black text-red-500 text-center mb-8 tracking-widest">IRONLOG</h1>
 
         <h2 className="text-lg font-semibold mb-1">Forgot password</h2>
         <p className="text-sm text-gray-500 mb-6">

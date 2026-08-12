@@ -51,7 +51,7 @@ export default function ExercisePicker({onAdd,onClose}){
         {/* Exercise list — scrollable */}
         <div className="overflow-y-auto pb-8">
           {filtered.length === 0 && (
-            <p className="text-gray-600 text-sm text-center py-8">No exercises found</p>
+            <p className="text-gray-400 text-sm text-center py-8">No exercises found</p>
           )}
           {filtered.map(ex => (
             <button

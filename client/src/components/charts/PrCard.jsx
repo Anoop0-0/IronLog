@@ -27,11 +27,11 @@ export default function PRCard({ record }) {
             {bodyPart}
           </span>
         </div>
-        <p className="text-xs text-gray-600">{formatDate(date)}</p>
+        <p className="text-xs text-gray-400">{formatDate(date)}</p>
       </div>
       <div className="text-right">
         <p className="text-lg font-bold text-red-400">{weight}kg</p>
-        <p className="text-xs text-gray-600">{reps} reps</p>
+        <p className="text-xs text-gray-400">{reps} reps</p>
       </div>
     </div>
   )

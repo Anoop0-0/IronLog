@@ -38,8 +38,8 @@ export default function Progress() {
   return (
     <AppLayout>
       <div className="px-4 pt-10 pb-4">
-        <h1 className="text-xl font-bold text-white">Progress</h1>
-        <p className="text-xs text-gray-600 mt-0.5">Last 30 days</p>
+        <h1 className="font-display text-xl font-bold text-white">Progress</h1>
+        <p className="text-xs text-gray-400 mt-0.5">Last 30 days</p>
       </div>
 
       {loading ? (
@@ -58,7 +58,7 @@ export default function Progress() {
                   <h2 className="text-sm font-semibold text-white">
                     Weekly volume
                   </h2>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     Total kg lifted per week
                   </p>
                 </div>
@@ -69,7 +69,7 @@ export default function Progress() {
                       .reduce((sum, w) => sum + w.volume, 0)
                       .toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-600">kg total</p>
+                  <p className="text-xs text-gray-400">kg total</p>
                 </div>
               </div>
               <VolumeChart data={weeklyVolume} />
@@ -82,7 +82,7 @@ export default function Progress() {
               <h2 className="text-sm font-semibold text-white">
                 Personal records
               </h2>
-              <span className="text-xs text-gray-600">
+              <span className="text-xs text-gray-400">
                 {filteredPRs.length} exercises
               </span>
             </div>
@@ -107,8 +107,8 @@ export default function Progress() {
             {/* PR list */}
             {filteredPRs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-600 text-sm">No records yet</p>
-                <p className="text-gray-700 text-xs mt-1">
+                <p className="text-gray-400 text-sm">No records yet</p>
+                <p className="text-gray-500 text-xs mt-1">
                   Log a workout to see your PRs
                 </p>
               </div>

@@ -9,7 +9,7 @@ export default function Landing() {
       {/* Nav */}
       <nav className="flex justify-between items-center px-6 py-4
                       border-b border-white/5 sticky top-0 bg-gray-950 z-10">
-        <span className="text-xl font-bold tracking-[3px] text-red-500">
+        <span className="font-display text-xl font-bold tracking-[3px] text-red-500">
           IRONLOG
         </span>
         <button
@@ -28,7 +28,7 @@ export default function Landing() {
                         mb-6 tracking-wide">
           Now with Google Sign-In
         </div>
-        <h1 className="text-5xl sm:text-6xl font-bold leading-tight
+        <h1 className="font-display text-5xl sm:text-6xl font-black leading-tight
                        tracking-tight mb-5">
           Track lifts.<br/>
           <span className="text-red-500">Crush</span> friends.
@@ -67,7 +67,7 @@ export default function Landing() {
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <p className="text-xs text-gray-600">Welcome back</p>
+                  <p className="text-xs text-gray-400">Welcome back</p>
                   <p className="text-sm font-bold">Anoop 👋</p>
                 </div>
                 <div className="bg-red-500 text-white text-xs
@@ -77,7 +77,7 @@ export default function Landing() {
               </div>
               <div className="bg-[#161616] border border-white/5
                               rounded-xl p-3 mb-2">
-                <p className="text-xs text-gray-600 mb-1">Today</p>
+                <p className="text-xs text-gray-400 mb-1">Today</p>
                 <p className="text-xs font-semibold text-gray-300">
                   Bench Press
                 </p>
@@ -105,8 +105,8 @@ export default function Landing() {
         <p className="text-xs tracking-widest text-red-500 uppercase mb-2">
           Everything you need
         </p>
-        <h2 className="text-3xl font-bold mb-2">Built for the gym floor</h2>
-        <p className="text-gray-600 mb-12">
+        <h2 className="font-display text-3xl font-bold mb-2">Built for the gym floor</h2>
+        <p className="text-gray-400 mb-12">
           Not a spreadsheet. Not a notes app. A real gym tracker.
         </p>
 
@@ -144,7 +144,7 @@ export default function Landing() {
                 {f.icon}
               </div>
               <h3 className="font-semibold text-gray-200 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">{f.desc}</p>
+              <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -155,8 +155,8 @@ export default function Landing() {
         <p className="text-xs tracking-widest text-red-500 uppercase mb-2">
           Compete
         </p>
-        <h2 className="text-3xl font-bold mb-2">Real-time leaderboards</h2>
-        <p className="text-gray-600 mb-10">
+        <h2 className="font-display text-3xl font-bold mb-2">Real-time leaderboards</h2>
+        <p className="text-gray-400 mb-10">
           Challenge your gym friends. Scores update the moment a qualifying
           workout is logged.
         </p>
@@ -167,12 +167,12 @@ export default function Landing() {
             <h3 className="font-semibold text-white text-sm">
               Bench Press Battle
             </h3>
-            <p className="text-xs text-gray-600 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               Bench Press · Heaviest single lift
             </p>
             <div className="flex gap-2 mt-3">
               {['🔄 Live', '4d left', '4 athletes'].map(t => (
-                <span key={t} className="text-xs bg-white/5 text-gray-600
+                <span key={t} className="text-xs bg-white/5 text-gray-400
                                          px-2 py-1 rounded-full border
                                          border-white/5">
                   {t}
@@ -190,7 +190,7 @@ export default function Landing() {
             <div key={i} className={`flex items-center px-4 py-3.5
                                      border-b border-white/[0.04] last:border-0
                                      ${e.gold ? 'bg-yellow-900/10' : ''}`}>
-              <span className={`w-8 text-lg ${!e.gold && i === 3 ? 'text-xs text-gray-600' : ''}`}>
+              <span className={`w-8 text-lg ${!e.gold && i === 3 ? 'text-xs text-gray-400' : ''}`}>
                 {e.rank}
               </span>
               <div className="w-9 h-9 rounded-full bg-white/5 border
@@ -200,7 +200,7 @@ export default function Landing() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-300">{e.name}</p>
-                <p className="text-xs text-gray-600">{e.reps} reps</p>
+                <p className="text-xs text-gray-400">{e.reps} reps</p>
               </div>
               <p className={`text-lg font-bold
                             ${e.gold ? 'text-yellow-400' : 'text-red-400'}`}>
@@ -230,7 +230,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="text-center py-8 border-t border-white/5
-                         text-xs text-gray-700">
+                         text-xs text-gray-500">
         © 2026 IRONLOG · Built by Anoop Baghel
       </footer>
     </div>
