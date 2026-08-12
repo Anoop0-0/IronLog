@@ -269,15 +269,15 @@ function ExerciseCard({
           <h3 className="font-semibold text-white">{exercise.name}</h3>
           <span className="text-xs text-gray-400">{exercise.bodyPart}</span>
         </div>
-        <div className="flex gap-3 items-center mt-0.5">
+        <div className="flex gap-1 items-center mt-0.5">
           <button
             onClick={onToggleNote}
-            className={`text-xs transition-colors
+            className={`text-xs px-2 py-2 -my-2 transition-colors
               ${noteOpen ? 'text-red-400' : 'text-gray-400'}`}
           >
             Notes
           </button>
-          <button onClick={onDeleteExercise} className="text-gray-500 active:text-red-500">
+          <button onClick={onDeleteExercise} className="text-gray-500 active:text-red-500 p-2 -my-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.8"
               strokeLinecap="round" strokeLinejoin="round">
@@ -304,9 +304,9 @@ function ExerciseCard({
 
       <div className="grid grid-cols-12 px-4 pb-1">
         <span className="col-span-1 text-xs text-gray-400">Set</span>
-        <span className="col-span-4 text-xs text-gray-400">Reps</span>
-        <span className="col-span-4 text-xs text-gray-400">Weight</span>
-        <span className="col-span-3"></span>
+        <span className="col-span-3 text-xs text-gray-400">Reps</span>
+        <span className="col-span-3 text-xs text-gray-400">Weight</span>
+        <span className="col-span-5"></span>
       </div>
 
       <div className="px-4 space-y-2 pb-3">
@@ -325,7 +325,7 @@ function ExerciseCard({
               value={set.reps}
               onChange={e => onUpdateSet(set.id, 'reps', e.target.value)}
               disabled={set.saved && !set.editing}
-              className={`col-span-4 border rounded-lg px-2 py-2 text-sm
+              className={`col-span-3 border rounded-lg px-2 py-2 text-sm
                           text-white text-center outline-none
                           ${set.saved && !set.editing
                             ? 'bg-gray-800/50 border-gray-800 text-gray-500'
@@ -341,29 +341,29 @@ function ExerciseCard({
               value={set.weight}
               onChange={e => onUpdateSet(set.id, 'weight', e.target.value)}
               disabled={set.saved && !set.editing}
-              className={`col-span-4 border rounded-lg px-2 py-2 text-sm
+              className={`col-span-3 border rounded-lg px-2 py-2 text-sm
                           text-white text-center outline-none
                           ${set.saved && !set.editing
                             ? 'bg-gray-800/50 border-gray-800 text-gray-500'
                             : 'bg-gray-800 border-gray-700 focus:border-red-700'}`}
             />
 
-            <div className="col-span-3 flex justify-end gap-1">
+            <div className="col-span-5 flex justify-end items-center gap-1.5">
               {!set.saved ? (
                 <>
                   <button
                     onClick={() => onSaveSet(set)}
                     disabled={!set.reps || !set.weight}
                     className="bg-green-700 disabled:opacity-30 text-white
-                               text-xs px-2 py-1.5 rounded-lg active:scale-95
-                               transition-all"
+                               text-xs font-medium px-3.5 py-2.5 rounded-lg
+                               active:scale-95 transition-all"
                   >
                     Save
                   </button>
                   {exercise.sets.length > 1 && (
                     <button
                       onClick={() => onDeleteSet(set.id)}
-                      className="text-gray-500 active:text-red-500 p-1"
+                      className="text-gray-500 active:text-red-500 p-2.5 -m-0.5"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2"
@@ -378,15 +378,17 @@ function ExerciseCard({
                   onClick={() => onSaveSet(set)}
                   disabled={!set.reps || !set.weight}
                   className="bg-blue-600 disabled:opacity-30 text-white
-                             text-xs px-2 py-1.5 rounded-lg active:scale-95
-                             transition-all"
+                             text-xs font-medium px-3.5 py-2.5 rounded-lg
+                             active:scale-95 transition-all"
                 >
                   Update
                 </button>
               ) : (
                 <button
                   onClick={() => onEditSet(set.id)}
-                  className="text-green-500 text-xs px-2 active:text-green-300"
+                  className="bg-gray-800 border border-gray-700 text-green-500
+                             text-xs font-medium px-3.5 py-2.5 rounded-lg
+                             active:bg-gray-700 transition-colors"
                 >
                   ✓
                 </button>
