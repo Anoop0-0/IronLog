@@ -7,6 +7,7 @@ import {
   updateWorkout,
   addSetToToday,
   updateSetInToday,
+  deleteSetFromToday,
   updateExerciseNotesInToday,
   deleteExerciseFromToday,
 } from '../controllers/workout.controller.js'
@@ -21,6 +22,7 @@ router.get('/today',             getTodayWorkout)
 router.post('/',                 logWorkout)
 router.post('/today/set',        addSetToToday)
 router.put('/today/set/:setId',  updateSetInToday)
+router.delete('/today/set/:setId', deleteSetFromToday)
 router.put('/today/exercise/notes',   updateExerciseNotesInToday)
 router.delete('/today/exercise',      deleteExerciseFromToday)
 router.put('/:id',               updateWorkout)
