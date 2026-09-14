@@ -13,13 +13,33 @@ dotenv.config()
 const app  = express()
 const PORT = process.env.PORT || 5000
 
+// fixed origins (localhost + known production URLs), plus a pattern match
+// for Vercel preview deployments — every push gets its own unique
+// "<project>-<hash>-anoop0-0s-projects.vercel.app" URL, so a static list
+// can never keep up with those; this matches any deployment under this
+// Vercel team/scope instead
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://iron-log-delta-dusky.vercel.app',
+  'https://iron-log-anoop0-0s-projects.vercel.app',
+  'https://iron-log-git-main-anoop0-0s-projects.vercel.app',
+  'https://www.anoopbaghel.in',
+  'https://anoopbaghel.in',
+]
+
+const vercelPreviewPattern = /^https:\/\/[a-z0-9-]+-anoop0-0s-projects\.vercel\.app$/
+
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://iron-log-delta-dusky.vercel.app',
-    'https://www.anoopbaghel.in',
-    'https://anoopbaghel.in',
-  ],
+  origin: (origin, callback) => {
+    // no Origin header (curl, server-to-server, same-origin) — allow
+    if (!origin) return callback(null, true)
+
+    if (allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+      return callback(null, true)
+    }
+
+    callback(new Error('Not allowed by CORS'))
+  },
   credentials: true,
 }
 
