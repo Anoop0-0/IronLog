@@ -9,6 +9,15 @@ export default function ExercisePicker({onAdd,onClose}){
         ex.toLowerCase().includes(search.toLowerCase())
     )
 
+    const trimmedSearch = search.trim()
+    const hasExactMatch = filtered.some(ex => ex.toLowerCase() === trimmedSearch.toLowerCase())
+    const showCustomOption = trimmedSearch.length > 0 && !hasExactMatch
+
+    const handleAddCustom = () => {
+        onAdd(trimmedSearch, selectedBodyPart)
+        onClose()
+    }
+
     return (
         <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
       <div className="bg-gray-900 rounded-t-2xl max-h-[80vh] flex flex-col">
@@ -37,7 +46,7 @@ export default function ExercisePicker({onAdd,onClose}){
             {BODY_PARTS.map(part => (
               <button
                 key={part}
-                onClick={() => { setSelectedPart(part); setSearch('') }}
+                onClick={() => setSelectedPart(part)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium
                             transition-colors
                             ${selectedBodyPart === part
@@ -55,7 +64,21 @@ export default function ExercisePicker({onAdd,onClose}){
 
         {/* Exercise list — scrollable */}
         <div className="overflow-y-auto pb-8">
-          {filtered.length === 0 && (
+          {showCustomOption && (
+            <button
+              onClick={handleAddCustom}
+              className="w-full text-left px-4 py-3.5 border-b border-gray-800
+                         flex items-center gap-2.5 active:bg-gray-800 transition-colors"
+            >
+              <span className="w-5 h-5 flex-shrink-0 rounded-full bg-red-600
+                               text-white text-sm leading-none flex items-center
+                               justify-center">+</span>
+              <span className="text-sm text-gray-200">
+                Add <span className="font-semibold text-white">"{trimmedSearch}"</span> as new exercise
+              </span>
+            </button>
+          )}
+          {filtered.length === 0 && !showCustomOption && (
             <p className="text-gray-400 text-sm text-center py-8">No exercises found</p>
           )}
           {filtered.map(ex => (
