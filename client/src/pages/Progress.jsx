@@ -10,6 +10,7 @@ import {
   getSessionTrend,
 } from '../utils/progressHelpers'
 import { BODY_PARTS } from '../utils/exerciseList'
+import { navigateToExerciseGraphs } from '../utils/exerciseNav'
 
 const RANGES = [
   { label: '1M',  days: 30 },
@@ -46,16 +47,6 @@ export default function Progress() {
   const filteredPRs = bodyFilter === 'All'
     ? allPRs
     : allPRs.filter(pr => pr.bodyPart === bodyFilter)
-
-  const goToExerciseGraphs = (pr) => {
-    // ExerciseDetail treats "no entry today AND no bodyPart in state" as
-    // not-found (it's how it knows whether a fresh log is legitimate) —
-    // a PR is very often for an exercise you haven't done today, so this
-    // has to come along or it bounces straight back to /log
-    navigate(`/log/${encodeURIComponent(pr.exercise)}`, {
-      state: { initialTab: 2, bodyPart: pr.bodyPart },
-    })
-  }
 
   return (
     <AppLayout>
@@ -167,7 +158,7 @@ export default function Progress() {
                 {filteredPRs.map(pr => (
                   <button
                     key={pr.exercise}
-                    onClick={() => goToExerciseGraphs(pr)}
+                    onClick={() => navigateToExerciseGraphs(navigate, pr)}
                     className="w-full text-left active:opacity-80 transition-opacity"
                   >
                     <PRCard record={pr} />
