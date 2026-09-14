@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTimer } from '../../hooks/useTimer'
+import { vibrate, REST_TIMER_DONE } from '../../utils/haptics'
 
 const PRESETS = [
   { label: '60s',  seconds: 60  },
@@ -65,10 +66,6 @@ export default function RestTimer() {
     }
   }
 
-  const vibrate = () => {
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200])
-  }
-
   const startTimer = (seconds) => {
     clearInterval(intervalRef.current)
     setTotal(seconds)
@@ -96,7 +93,7 @@ export default function RestTimer() {
             clearInterval(intervalRef.current)
             setRunning(false)
             playBeep()
-            vibrate()
+            vibrate(REST_TIMER_DONE)
             return 0
           }
           return prev - 1

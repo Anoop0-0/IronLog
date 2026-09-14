@@ -12,6 +12,8 @@ import {
   filterByDays, TIMELINE_RANGES,
 } from '../utils/progressHelpers'
 import { useTimer } from '../hooks/useTimer'
+import { AchievementBadge, AchievementBanner } from '../components/workout/Achievement'
+import { vibrate, ACHIEVEMENT } from '../utils/haptics'
 
 const TABS = ['Log', 'History', 'Graphs']
 
@@ -36,11 +38,15 @@ export default function ExerciseDetail() {
   const [bodyPart,  setBodyPart]  = useState(location.state?.bodyPart || '')
   const [notes,     setNotes]     = useState('')
   const [noteOpen,  setNoteOpen]  = useState(false)
-  const [sets,      setSets]      = useState([]) // today's saved sets: [{id, originalId, reps, weight}]
+  const [sets,      setSets]      = useState([]) // today's saved sets: [{id, originalId, reps, weight, achievements}]
   const [history,   setHistory]   = useState([])
   const [loading,   setLoading]   = useState(true)
   const [notFound,  setNotFound]  = useState(false)
   const [error,     setError]     = useState('')
+
+  // the record just earned by the set that was saved, if any — cleared on
+  // the next save so it always refers to the most recent one
+  const [celebration, setCelebration] = useState(null)
 
   const [draftWeight,   setDraftWeight]   = useState('')
   const [draftReps,     setDraftReps]     = useState('')
@@ -70,6 +76,7 @@ export default function ExerciseDetail() {
         if (todayEx) {
           const loadedSets = todayEx.sets.map(s => ({
             id: s._id, originalId: s._id, reps: s.reps, weight: s.weight,
+            achievements: s.achievements || [],
           }))
           setSets(loadedSets)
           setBodyPart(todayEx.bodyPart)
@@ -150,6 +157,7 @@ export default function ExerciseDetail() {
   const handleSaveDraft = async () => {
     if (!draftWeight || !draftReps) return
     setError('')
+    setCelebration(null)
 
     try {
       if (selectedSetId) {
@@ -164,7 +172,15 @@ export default function ExerciseDetail() {
         })
         const savedExercise = res.data.exercises.find(e => e.name === name)
         const savedSet = savedExercise.sets[savedExercise.sets.length - 1]
-        setSets(prev => [...prev, { id: savedSet._id, originalId: savedSet._id, reps: savedSet.reps, weight: savedSet.weight }])
+        const achievements = savedSet.achievements || []
+        setSets(prev => [...prev, {
+          id: savedSet._id, originalId: savedSet._id,
+          reps: savedSet.reps, weight: savedSet.weight, achievements,
+        }])
+        if (achievements.length > 0) {
+          setCelebration({ achievements, reps: savedSet.reps, weight: savedSet.weight })
+          vibrate(ACHIEVEMENT)
+        }
         startRestTimer()
       }
       // this set is now part of "today" in history too
@@ -358,6 +374,15 @@ export default function ExerciseDetail() {
             )}
           </div>
 
+          {celebration && (
+            <AchievementBanner
+              achievements={celebration.achievements}
+              reps={celebration.reps}
+              weight={celebration.weight}
+              onDismiss={() => setCelebration(null)}
+            />
+          )}
+
           {sets.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
               <p className="text-xs text-gray-400 uppercase tracking-wide px-4 pt-3 pb-1">Today</p>
@@ -374,6 +399,11 @@ export default function ExerciseDetail() {
                   </span>
                   <span className="flex-1 text-sm text-white text-center">
                     {set.reps}<span className="text-gray-500 text-xs ml-1">reps</span>
+                  </span>
+                  <span className="w-14 flex justify-end gap-1">
+                    {(set.achievements || []).map(kind => (
+                      <AchievementBadge key={kind} kind={kind} />
+                    ))}
                   </span>
                 </button>
               ))}
@@ -395,9 +425,14 @@ export default function ExerciseDetail() {
                   <p className="text-xs text-gray-400 mb-2">{relativeDate(entry.date)}</p>
                   <div className="space-y-1">
                     {entry.sets.map((s, si) => (
-                      <div key={si} className="flex justify-between text-sm">
+                      <div key={si} className="flex justify-between items-center text-sm">
                         <span className="text-gray-500">Set {si + 1}</span>
-                        <span className="text-white">{s.weight}kg × {s.reps} reps</span>
+                        <span className="flex items-center gap-2">
+                          {(s.achievements || []).map(kind => (
+                            <AchievementBadge key={kind} kind={kind} />
+                          ))}
+                          <span className="text-white">{s.weight}kg × {s.reps} reps</span>
+                        </span>
                       </div>
                     ))}
                   </div>
