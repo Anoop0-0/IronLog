@@ -69,11 +69,23 @@ export const getPersonalRecords = (workouts) => {
   return Object.values(records).sort((a, b) => b.weight - a.weight)
 }
 
-// ── filter workouts to last N days ───────────────────────────────────
-export const filterByDays = (workouts, days) => {
+// ── shared timeline filter (Progress page + per-exercise Graphs tab) ──
+export const TIMELINE_RANGES = [
+  { label: '1M',  days: 30 },
+  { label: '3M',  days: 90 },
+  { label: '6M',  days: 180 },
+  { label: '1Y',  days: 365 },
+  { label: 'All', days: null },
+]
+
+// filter to items within the last N days. `getDate` lets callers point
+// at whatever field holds the date — workouts use `createdAt`, a
+// per-exercise history entry uses `date`. days: null means "all time".
+export const filterByDays = (items, days, getDate = (item) => item.createdAt) => {
+  if (days === null) return items
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - days)
-  return workouts.filter(w => new Date(w.createdAt) >= cutoff)
+  return items.filter(item => new Date(getDate(item)) >= cutoff)
 }
 
 
@@ -111,10 +123,21 @@ export const getMostTrainedPart = (workouts) => {
 // all of these take the shape GET /workouts/exercise/:name/history returns:
 // [{ date, sets: [{ reps, weight }] }, ...]
 
-// highest single-set rep count ever performed, regardless of weight
-export const getMaxReps = (history) => {
-  const allReps = history.flatMap(entry => entry.sets.map(s => s.reps))
-  return allReps.length ? Math.max(...allReps) : null
+// the single set with the highest rep count, and the weight it was
+// performed at — "12 reps" alone doesn't mean anything without knowing
+// whether that was an empty bar or a heavy set. Ties (same rep count at
+// different weights) go to the heavier one, since that's the more
+// impressive record.
+export const getMaxRepsSet = (history) => {
+  let best = null
+  history.forEach(entry =>
+    entry.sets.forEach(s => {
+      if (!best || s.reps > best.reps || (s.reps === best.reps && s.weight > best.weight)) {
+        best = { reps: s.reps, weight: s.weight, date: entry.date }
+      }
+    })
+  )
+  return best
 }
 
 // the single session (one workout day) with the highest total volume
@@ -128,14 +151,33 @@ export const getBestSessionVolume = (history) => {
   return sessions.reduce((best, s) => (!best || s.volume > best.volume) ? s : best, null)
 }
 
-// Epley formula — a standard estimate, not a measured max. Computed per
-// set (not just off the heaviest set) since a lower-weight, higher-rep
-// set can sometimes estimate a higher 1RM than the single heaviest lift.
+// Epley formula (weight * (1 + reps/30)) — a standard estimate, not a
+// measured max. It's only reasonably accurate for sets taken close to
+// failure in a strength-testing rep range; past ~12 reps the
+// extrapolation stops meaning anything (a 20-rep set would "estimate" a
+// 1RM nobody actually has). So estimates are computed only from sets at
+// or under that ceiling, falling back to the full set list if this
+// exercise has never been logged in that range (e.g. pure high-rep
+// accessory work) so this still returns something rather than null.
+// Returns the winning set alongside the number so the UI can show its
+// work — "117kg, from 100kg × 5" — instead of an unexplained figure.
+const RELIABLE_1RM_REP_CEILING = 12
+
 export const getEstimated1RM = (history) => {
-  const estimates = history.flatMap(entry =>
-    entry.sets.map(s => Math.round(s.weight * (1 + s.reps / 30)))
+  const allSets = history.flatMap(entry =>
+    entry.sets.map(s => ({ reps: s.reps, weight: s.weight, date: entry.date }))
   )
-  return estimates.length ? Math.max(...estimates) : null
+  if (allSets.length === 0) return null
+
+  const reliable = allSets.filter(s => s.reps <= RELIABLE_1RM_REP_CEILING)
+  const pool = reliable.length ? reliable : allSets
+
+  return pool.reduce((best, s) => {
+    const estimate = Math.round(s.weight * (1 + s.reps / 30))
+    return (!best || estimate > best.estimate)
+      ? { estimate, weight: s.weight, reps: s.reps, date: s.date }
+      : best
+  }, null)
 }
 
 // heaviest weight ever lifted at each distinct rep count, e.g.

@@ -8,27 +8,20 @@ import {
   getPersonalRecords,
   filterByDays,
   getSessionTrend,
+  TIMELINE_RANGES,
 } from '../utils/progressHelpers'
 import { BODY_PARTS } from '../utils/exerciseList'
 import { navigateToExerciseGraphs } from '../utils/exerciseNav'
-
-const RANGES = [
-  { label: '1M',  days: 30 },
-  { label: '3M',  days: 90 },
-  { label: '6M',  days: 180 },
-  { label: '1Y',  days: 365 },
-  { label: 'All', days: null },
-]
 
 export default function Progress() {
   const { workouts, loading } = useWorkouts()
   const navigate = useNavigate()
   const [bodyFilter, setBodyFilter] = useState('All')
-  const [range,      setRange]      = useState(RANGES[0])
+  const [range,      setRange]      = useState(TIMELINE_RANGES[0])
   const [metric,     setMetric]     = useState('volume') // 'volume' | 'reps'
 
   const rangeWorkouts = useMemo(
-    () => range.days === null ? workouts : filterByDays(workouts, range.days),
+    () => filterByDays(workouts, range.days),
     [workouts, range]
   )
 
@@ -66,7 +59,7 @@ export default function Progress() {
           {/* Timeline range */}
           <div className="px-4 mb-3">
             <div className="flex gap-2">
-              {RANGES.map(r => (
+              {TIMELINE_RANGES.map(r => (
                 <button
                   key={r.label}
                   onClick={() => setRange(r)}

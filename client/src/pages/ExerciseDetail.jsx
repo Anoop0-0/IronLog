@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import Stepper         from '../components/workout/Stepper'
@@ -8,7 +8,8 @@ import {
   updateExerciseNotes, deleteExerciseFromToday, getExerciseHistory,
 } from '../api/workouts.api'
 import {
-  getMaxReps, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
+  getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
+  filterByDays, TIMELINE_RANGES,
 } from '../utils/progressHelpers'
 import { useTimer } from '../hooks/useTimer'
 
@@ -49,6 +50,12 @@ export default function ExerciseDetail() {
   // you straight to the Graphs tab for a specific exercise
   const [activeTab, setActiveTab] = useState(location.state?.initialTab ?? 0)
   const scrollRef = useRef(null)
+
+  // defaults to All (unlike Progress's 1M default) — this page is
+  // usually reached by tapping a specific PR, which is very often older
+  // than 30 days, and landing on an empty "Nothing in range" screen
+  // right after that tap would be a bad first impression
+  const [range, setRange] = useState(TIMELINE_RANGES[TIMELINE_RANGES.length - 1])
 
   useEffect(() => {
     const load = async () => {
@@ -193,17 +200,25 @@ export default function ExerciseDetail() {
     }
   }
 
-  const trendData = [...history].reverse().map(entry => ({
+  // graphs/stats respect the timeline filter; the Log/History panels
+  // stay all-time — filtering "today's exercises" or your full set-log
+  // wouldn't make sense
+  const rangeHistory = useMemo(
+    () => filterByDays(history, range.days, entry => entry.date),
+    [history, range]
+  )
+
+  const trendData = [...rangeHistory].reverse().map(entry => ({
     label: shortDate(entry.date),
     value: Math.max(...entry.sets.map(s => s.weight)),
   }))
-  const personalBest    = history.length
-    ? Math.max(...history.flatMap(e => e.sets.map(s => s.weight)))
+  const personalBest    = rangeHistory.length
+    ? Math.max(...rangeHistory.flatMap(e => e.sets.map(s => s.weight)))
     : null
-  const maxReps          = getMaxReps(history)
-  const bestSessionVolume = getBestSessionVolume(history)
-  const estimated1RM     = getEstimated1RM(history)
-  const weightByReps     = getBestWeightByReps(history)
+  const maxRepsSet        = getMaxRepsSet(rangeHistory)
+  const bestSessionVolume = getBestSessionVolume(rangeHistory)
+  const estimated1RM     = getEstimated1RM(rangeHistory)
+  const weightByReps     = getBestWeightByReps(rangeHistory)
 
   if (loading) {
     return (
@@ -394,38 +409,67 @@ export default function ExerciseDetail() {
 
         {/* Graphs panel */}
         <div className="w-full flex-shrink-0 snap-center px-4 pb-4">
-          {personalBest === null ? (
+          {history.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-400 text-sm">Nothing logged yet</p>
               <p className="text-gray-600 text-xs mt-1">Stats and trends show up after your first set</p>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Personal best</p>
-                  <p className="text-lg font-bold text-red-400">{personalBest}kg</p>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Max reps</p>
-                  <p className="text-lg font-bold text-red-400">{maxReps}</p>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Est. 1RM</p>
-                  <p className="text-lg font-bold text-red-400">{estimated1RM}kg</p>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Best session volume</p>
-                  <p className="text-lg font-bold text-red-400">
-                    {bestSessionVolume.volume.toLocaleString()}<span className="text-xs">kg</span>
-                  </p>
-                </div>
+              {/* Timeline range — same filter as the Progress page */}
+              <div className="flex gap-2 mb-4">
+                {TIMELINE_RANGES.map(r => (
+                  <button
+                    key={r.label}
+                    onClick={() => setRange(r)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors
+                                ${range.label === r.label
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-gray-900 text-gray-400 border border-gray-800'}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-                <p className="text-sm font-semibold text-white mb-2">Weight trend</p>
-                <TrendAreaChart data={trendData} valueSuffix="kg" />
-              </div>
+              {personalBest === null ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-400 text-sm">No sets in this range</p>
+                  <p className="text-gray-600 text-xs mt-1">Try a wider timeline above</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                      <p className="text-xs text-gray-400">Personal best</p>
+                      <p className="text-lg font-bold text-red-400">{personalBest}kg</p>
+                    </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                      <p className="text-xs text-gray-400">Max reps</p>
+                      <p className="text-lg font-bold text-red-400">{maxRepsSet.reps}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">@ {maxRepsSet.weight}kg</p>
+                    </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                      <p className="text-xs text-gray-400">Est. 1RM</p>
+                      <p className="text-lg font-bold text-red-400">{estimated1RM.estimate}kg</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        from {estimated1RM.weight}kg × {estimated1RM.reps}
+                      </p>
+                    </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                      <p className="text-xs text-gray-400">Best session volume</p>
+                      <p className="text-lg font-bold text-red-400">
+                        {bestSessionVolume.volume.toLocaleString()}<span className="text-xs">kg</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+                    <p className="text-sm font-semibold text-white mb-2">Weight trend</p>
+                    <TrendAreaChart data={trendData} valueSuffix="kg" />
+                  </div>
+                </>
+              )}
 
               {weightByReps.length > 0 && (
                 <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">

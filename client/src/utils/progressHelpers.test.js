@@ -6,7 +6,7 @@ import {
   getTotalVolume,
   getTotalSets,
   getMostTrainedPart,
-  getMaxReps,
+  getMaxRepsSet,
   getBestSessionVolume,
   getEstimated1RM,
   getBestWeightByReps,
@@ -112,6 +112,22 @@ describe('filterByDays', () => {
     expect(filtered).toHaveLength(1)
     expect(filtered[0].createdAt).toBe(recent.toISOString())
   })
+
+  it('returns everything unfiltered when days is null (the "All" range)', () => {
+    const workouts = [workout('2020-01-01T00:00:00.000Z', [])]
+    expect(filterByDays(workouts, null)).toEqual(workouts)
+  })
+
+  it('accepts a custom date accessor for shapes other than { createdAt }', () => {
+    const now = new Date()
+    const recent = new Date(now); recent.setDate(now.getDate() - 2)
+    const old    = new Date(now); old.setDate(now.getDate() - 40)
+
+    const entries = [{ date: recent.toISOString() }, { date: old.toISOString() }]
+    const filtered = filterByDays(entries, 30, e => e.date)
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].date).toBe(recent.toISOString())
+  })
 })
 
 describe('getWeeklyVolume', () => {
@@ -139,17 +155,25 @@ describe('getWeeklyVolume', () => {
 // [{ date, sets: [{ reps, weight }] }]
 const historyEntry = (date, sets) => ({ date, sets })
 
-describe('getMaxReps', () => {
-  it('returns the highest single-set rep count regardless of weight', () => {
+describe('getMaxRepsSet', () => {
+  it('returns the highest single-set rep count along with the weight used', () => {
     const history = [
       historyEntry('2026-01-01', [{ reps: 8, weight: 80 }, { reps: 12, weight: 40 }]),
       historyEntry('2026-01-08', [{ reps: 6, weight: 90 }]),
     ]
-    expect(getMaxReps(history)).toBe(12)
+    expect(getMaxRepsSet(history)).toEqual({ reps: 12, weight: 40, date: '2026-01-01' })
+  })
+
+  it('breaks ties in equal rep counts by preferring the heavier weight', () => {
+    const history = [
+      historyEntry('2026-01-01', [{ reps: 10, weight: 60 }]),
+      historyEntry('2026-01-08', [{ reps: 10, weight: 80 }]),
+    ]
+    expect(getMaxRepsSet(history)).toEqual({ reps: 10, weight: 80, date: '2026-01-08' })
   })
 
   it('returns null for no history', () => {
-    expect(getMaxReps([])).toBeNull()
+    expect(getMaxRepsSet([])).toBeNull()
   })
 })
 
@@ -170,7 +194,7 @@ describe('getBestSessionVolume', () => {
 })
 
 describe('getEstimated1RM', () => {
-  it('computes the Epley estimate and takes the max across all sets', () => {
+  it('computes the Epley estimate and takes the max across sets, returning the winning set', () => {
     const history = [
       historyEntry('2026-01-01', [
         { reps: 5, weight: 100 },  // 100 * (1 + 5/30) = 116.67 -> 117
@@ -178,7 +202,24 @@ describe('getEstimated1RM', () => {
       ]),
     ]
     // the higher-rep set estimates a higher 1RM despite lower weight
-    expect(getEstimated1RM(history)).toBe(117)
+    expect(getEstimated1RM(history)).toEqual({ estimate: 117, weight: 100, reps: 5, date: '2026-01-01' })
+  })
+
+  it('ignores sets above the reliable rep ceiling when a reliable set exists', () => {
+    const history = [
+      historyEntry('2026-01-01', [
+        { reps: 25, weight: 20 },  // high-rep set: 20 * (1 + 25/30) = 36.67 -> 37, but unreliable
+        { reps: 5,  weight: 100 }, // 100 * (1 + 5/30) = 116.67 -> 117, reliable and higher anyway
+      ]),
+    ]
+    expect(getEstimated1RM(history)).toEqual({ estimate: 117, weight: 100, reps: 5, date: '2026-01-01' })
+  })
+
+  it('falls back to unreliable sets if nothing in this exercise is ever under the rep ceiling', () => {
+    const history = [
+      historyEntry('2026-01-01', [{ reps: 25, weight: 20 }]), // 20 * (1 + 25/30) = 36.67 -> 37
+    ]
+    expect(getEstimated1RM(history)).toEqual({ estimate: 37, weight: 20, reps: 25, date: '2026-01-01' })
   })
 
   it('returns null for no history', () => {
