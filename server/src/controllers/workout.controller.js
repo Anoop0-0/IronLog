@@ -29,6 +29,29 @@ export const getTodayWorkout = async (req, res, next) => {
   }
 }
 
+// ── full history for one exercise, across all workouts ─
+export const getExerciseHistory = async (req, res, next) => {
+  try {
+    const { name } = req.params
+
+    const workouts = await Workout.find({
+      userId: req.user._id,
+      'exercises.name': name,
+    }).sort({ createdAt: -1 })
+
+    const history = workouts
+      .map(w => {
+        const ex = w.exercises.find(e => e.name === name)
+        return ex ? { date: w.createdAt, sets: ex.sets.map(s => ({ reps: s.reps, weight: s.weight })) } : null
+      })
+      .filter(entry => entry && entry.sets.length > 0)
+
+    res.json(history)
+  } catch (err) {
+    next(err)
+  }
+}
+
 // ── log a new workout ─────────────────────────────────
 export const logWorkout = async (req, res, next) => {
   try {
