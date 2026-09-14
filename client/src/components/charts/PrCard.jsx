@@ -7,10 +7,10 @@ const PART_COLORS = {
   Chest:     'bg-red-900/30 text-red-400 border-red-900',
   Back:      'bg-blue-900/30 text-blue-400 border-blue-900',
   Shoulders: 'bg-purple-900/30 text-purple-400 border-purple-900',
-  Biceps:    'bg-green-900/30 text-green-400 border-green-900',
-  Triceps:   'bg-orange-900/30 text-orange-400 border-orange-900',
+  Arms:      'bg-green-900/30 text-green-400 border-green-900',
   Legs:      'bg-yellow-900/30 text-yellow-400 border-yellow-900',
   Core:      'bg-teal-900/30 text-teal-400 border-teal-900',
+  Cardio:    'bg-orange-900/30 text-orange-400 border-orange-900',
 }
 
 export default function PRCard({ record }) {

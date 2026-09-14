@@ -106,3 +106,69 @@ export const getMostTrainedPart = (workouts) => {
   if (Object.keys(counts).length === 0) return '—'
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
 }
+
+// ── per-exercise deep-dive metrics ──────────────────────────────────
+// all of these take the shape GET /workouts/exercise/:name/history returns:
+// [{ date, sets: [{ reps, weight }] }, ...]
+
+// highest single-set rep count ever performed, regardless of weight
+export const getMaxReps = (history) => {
+  const allReps = history.flatMap(entry => entry.sets.map(s => s.reps))
+  return allReps.length ? Math.max(...allReps) : null
+}
+
+// the single session (one workout day) with the highest total volume
+// for this exercise
+export const getBestSessionVolume = (history) => {
+  if (history.length === 0) return null
+  const sessions = history.map(entry => ({
+    date: entry.date,
+    volume: entry.sets.reduce((sum, s) => sum + s.reps * s.weight, 0),
+  }))
+  return sessions.reduce((best, s) => (!best || s.volume > best.volume) ? s : best, null)
+}
+
+// Epley formula — a standard estimate, not a measured max. Computed per
+// set (not just off the heaviest set) since a lower-weight, higher-rep
+// set can sometimes estimate a higher 1RM than the single heaviest lift.
+export const getEstimated1RM = (history) => {
+  const estimates = history.flatMap(entry =>
+    entry.sets.map(s => Math.round(s.weight * (1 + s.reps / 30)))
+  )
+  return estimates.length ? Math.max(...estimates) : null
+}
+
+// heaviest weight ever lifted at each distinct rep count, e.g.
+// [{ reps: 5, weight: 90 }, { reps: 8, weight: 80 }], sorted by reps asc
+export const getBestWeightByReps = (history) => {
+  const byReps = {}
+  history.forEach(entry =>
+    entry.sets.forEach(s => {
+      if (!byReps[s.reps] || s.weight > byReps[s.reps]) byReps[s.reps] = s.weight
+    })
+  )
+  return Object.entries(byReps)
+    .map(([reps, weight]) => ({ reps: Number(reps), weight }))
+    .sort((a, b) => a.reps - b.reps)
+}
+
+// ── account-wide session trend (for the Progress page) ──────────────
+// one point per workout session (not bucketed by week) so the timeline
+// filter (1M/3M/6M/1Y/All) controls the resolution directly; metric is
+// 'volume' or 'reps'
+export const getSessionTrend = (workouts, metric) => {
+  const sessions = workouts.map(w => {
+    let value = 0
+    w.exercises.forEach(ex => ex.sets.forEach(s => {
+      const reps   = parseFloat(s.reps)   || 0
+      const weight = parseFloat(s.weight) || 0
+      value += metric === 'reps' ? reps : reps * weight
+    }))
+    return {
+      label: new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: metric === 'reps' ? value : Math.round(value),
+      timestamp: new Date(w.createdAt).getTime(),
+    }
+  })
+  return sessions.sort((a, b) => a.timestamp - b.timestamp)
+}

@@ -2,11 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import Stepper         from '../components/workout/Stepper'
-import ExerciseTrendChart from '../components/charts/ExerciseTrendChart'
+import TrendAreaChart  from '../components/charts/TrendAreaChart'
 import {
   getTodayWorkout, addSetToToday, updateSetInToday, deleteSetFromToday,
   updateExerciseNotes, deleteExerciseFromToday, getExerciseHistory,
 } from '../api/workouts.api'
+import {
+  getMaxReps, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
+} from '../utils/progressHelpers'
 import { useTimer } from '../hooks/useTimer'
 
 const TABS = ['Log', 'History', 'Graphs']
@@ -42,7 +45,9 @@ export default function ExerciseDetail() {
   const [draftReps,     setDraftReps]     = useState('')
   const [selectedSetId, setSelectedSetId] = useState(null)
 
-  const [activeTab, setActiveTab] = useState(0)
+  // deep-linkable from Progress's personal-records list, which sends
+  // you straight to the Graphs tab for a specific exercise
+  const [activeTab, setActiveTab] = useState(location.state?.initialTab ?? 0)
   const scrollRef = useRef(null)
 
   useEffect(() => {
@@ -83,6 +88,16 @@ export default function ExerciseDetail() {
   useEffect(() => {
     if (notFound) navigate('/log', { replace: true })
   }, [notFound, navigate])
+
+  // land directly on the deep-linked tab (e.g. Graphs, from Progress's
+  // PR list) once the panels have actually rendered — setting activeTab
+  // alone doesn't move the scroll container
+  useEffect(() => {
+    if (!loading && activeTab !== 0 && scrollRef.current) {
+      scrollRef.current.scrollTo({ left: activeTab * scrollRef.current.clientWidth })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
 
   const canSave = parseFloat(draftWeight) > 0 && parseFloat(draftReps) > 0
   const isEditing = selectedSetId !== null
@@ -179,12 +194,16 @@ export default function ExerciseDetail() {
   }
 
   const trendData = [...history].reverse().map(entry => ({
-    date: shortDate(entry.date),
-    weight: Math.max(...entry.sets.map(s => s.weight)),
+    label: shortDate(entry.date),
+    value: Math.max(...entry.sets.map(s => s.weight)),
   }))
-  const personalBest = history.length
+  const personalBest    = history.length
     ? Math.max(...history.flatMap(e => e.sets.map(s => s.weight)))
     : null
+  const maxReps          = getMaxReps(history)
+  const bestSessionVolume = getBestSessionVolume(history)
+  const estimated1RM     = getEstimated1RM(history)
+  const weightByReps     = getBestWeightByReps(history)
 
   if (loading) {
     return (
@@ -375,17 +394,52 @@ export default function ExerciseDetail() {
 
         {/* Graphs panel */}
         <div className="w-full flex-shrink-0 snap-center px-4 pb-4">
-          {personalBest !== null && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4
-                            flex justify-between items-center">
-              <span className="text-sm text-gray-400">Personal best</span>
-              <span className="text-lg font-bold text-red-400">{personalBest}kg</span>
+          {personalBest === null ? (
+            <div className="text-center py-16">
+              <p className="text-gray-400 text-sm">Nothing logged yet</p>
+              <p className="text-gray-600 text-xs mt-1">Stats and trends show up after your first set</p>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Personal best</p>
+                  <p className="text-lg font-bold text-red-400">{personalBest}kg</p>
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Max reps</p>
+                  <p className="text-lg font-bold text-red-400">{maxReps}</p>
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Est. 1RM</p>
+                  <p className="text-lg font-bold text-red-400">{estimated1RM}kg</p>
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Best session volume</p>
+                  <p className="text-lg font-bold text-red-400">
+                    {bestSessionVolume.volume.toLocaleString()}<span className="text-xs">kg</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+                <p className="text-sm font-semibold text-white mb-2">Weight trend</p>
+                <TrendAreaChart data={trendData} valueSuffix="kg" />
+              </div>
+
+              {weightByReps.length > 0 && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                  <p className="text-sm font-semibold text-white px-4 pt-3 pb-2">Best weight by reps</p>
+                  {weightByReps.map(({ reps, weight }) => (
+                    <div key={reps} className="flex justify-between px-4 py-2.5 border-t border-gray-800">
+                      <span className="text-sm text-gray-400">{reps} {reps === 1 ? 'rep' : 'reps'}</span>
+                      <span className="text-sm text-white font-medium">{weight}kg</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-sm font-semibold text-white mb-2">Weight trend</p>
-            <ExerciseTrendChart data={trendData} />
-          </div>
         </div>
       </div>
     </AppLayout>
