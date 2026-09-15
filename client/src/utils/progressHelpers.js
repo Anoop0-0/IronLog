@@ -234,6 +234,49 @@ export const standingAchievements = (set, standing) => {
   })
 }
 
+// The sets that currently carry a badge, for surfaces that show an
+// aggregate (a "Personal best" stat card, a best-weight-by-reps row)
+// rather than an individual set.
+//
+// Those surfaces must not decide for themselves what counts as a record.
+// "Is this the most reps at this weight?" is trivially true the first
+// time you ever touch a weight — which is exactly why the server refuses
+// to award a rep record without a prior attempt to beat. Asking that
+// question independently would badge a set on one tab that shows no
+// badge on another. So aggregates match against the real holders here,
+// and the two can't disagree.
+export const getStandingRecordSets = (history) => {
+  const standing = getStandingRecords(history)
+  const holders = []
+
+  history.forEach(entry =>
+    entry.sets.forEach(s => {
+      const kinds = standingAchievements(s, standing)
+      if (kinds.length > 0) {
+        holders.push({ weight: Number(s.weight), reps: Number(s.reps), kinds })
+      }
+    })
+  )
+
+  return {
+    standing,
+    // a weight record is identified by its weight alone; a rep record
+    // needs the rep count too, since it's "most reps at THIS weight"
+    holdsWeightRecord: (weight, reps = null) =>
+      holders.some(h =>
+        h.kinds.includes('weight') &&
+        h.weight === Number(weight) &&
+        (reps === null || h.reps === Number(reps))
+      ),
+    holdsRepsRecord: (weight, reps) =>
+      holders.some(h =>
+        h.kinds.includes('reps') &&
+        h.weight === Number(weight) &&
+        h.reps === Number(reps)
+      ),
+  }
+}
+
 // heaviest weight ever lifted at each distinct rep count, e.g.
 // [{ reps: 5, weight: 90 }, { reps: 8, weight: 80 }], sorted by reps asc
 export const getBestWeightByReps = (history) => {
