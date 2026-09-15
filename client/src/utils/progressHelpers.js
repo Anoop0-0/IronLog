@@ -181,23 +181,29 @@ export const getEstimated1RM = (history) => {
 }
 
 // ── which records still stand ───────────────────────────────────────
-// A set's stored `achievements` record what it earned at the moment it
-// was logged, which is the only way that fact survives (see the server's
-// utils/achievements.js). For display though, a "PR" badge sitting on a
-// set from three heavier sessions ago is just wrong to look at — three
-// sets each claiming to be the personal best, when only one is.
+// What a set's badge means: "this is the record", present tense. A set's
+// stored `achievements` say what it earned at the moment it was logged
+// (see the server's utils/achievements.js), which is not the same thing
+// once something later beats it.
 //
-// So a stored badge is rendered only while its record still stands:
-//   'weight' — still the heaviest weight logged for this exercise
-//   'reps'   — still the most reps done at that exact weight
+//   'weight' — the heaviest weight logged for this exercise. Taken from
+//     the stored flag, because when several sets share that weight only
+//     the first to reach it took the record, and the data is the only
+//     thing that remembers which one that was.
 //
-// Filtering at display time rather than clearing the stored value keeps
-// this self-healing: edit or delete the set that took the record and the
-// previous holder's badge comes back on its own, with no write needed.
+//   'reps'   — the most reps done at that particular weight. Derived
+//     from the sets rather than the stored flag: the server only awards
+//     one when there was a prior attempt at that weight to beat, so the
+//     first time you touch a weight earns nothing even though it IS your
+//     best there. That left a first session almost entirely unbadged.
 //
-// No tie-breaking is required. Records are earned on strictly-greater-
-// than, so a later set matching the record doesn't take it, and at most
-// one set can hold a given badge.
+// A set never shows both. Holding the heaviest lift is the stronger
+// statement, and "PR + REP PR" on one row is just noise.
+//
+// Assignment is made across the whole history at once, not per set,
+// because ties need an answer: 3x10 at one weight is the normal case in
+// lifting, and all three tie for "most reps at it". The earliest takes
+// it — consistent with records being won on strictly-greater-than.
 export const getStandingRecords = (history) => {
   const allSets = history.flatMap(entry => entry.sets)
 
@@ -217,41 +223,67 @@ export const getStandingRecords = (history) => {
   return { maxWeight, bestRepsAtWeight }
 }
 
-// the subset of a set's stored achievements that are still the record.
-// Numbers are coerced because a just-edited set holds its weight/reps as
-// strings straight from the input, and '5' === 5 is false.
-export const standingAchievements = (set, standing) => {
-  const kinds = set?.achievements || []
-  if (!standing || kinds.length === 0) return []
+// oldest set first, so "the earliest to reach it" is simply the first
+// match. The history endpoint returns newest-first.
+const setsChronologically = (history) =>
+  [...history]
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .flatMap(entry => entry.sets)
 
-  const weight = Number(set.weight)
-  const reps   = Number(set.reps)
+// Map of set id -> badge kinds. Sets without an id (older API responses)
+// are skipped rather than guessed at.
+export const getBadgeAssignment = (history) => {
+  const standing = getStandingRecords(history)
+  const assignment = new Map()
+  if (standing.maxWeight === null) return { standing, assignment }
 
-  return kinds.filter(kind => {
-    if (kind === 'weight') return weight === standing.maxWeight
-    if (kind === 'reps')   return reps === standing.bestRepsAtWeight[weight]
-    return true   // an unknown future kind: show it rather than silently hide it
+  const ordered = setsChronologically(history)
+
+  // the heaviest lift: the one set that earned 'weight' at that weight
+  const weightHolder = ordered.find(s =>
+    (s.achievements || []).includes('weight') && Number(s.weight) === standing.maxWeight
+  )
+  if (weightHolder?._id) assignment.set(String(weightHolder._id), ['weight'])
+
+  // best effort at each weight, earliest on a tie, skipping whichever set
+  // already carries the headline badge
+  const claimed = new Set()
+  ordered.forEach(s => {
+    const weight = Number(s.weight)
+    const reps   = Number(s.reps)
+    if (!Number.isFinite(weight) || !Number.isFinite(reps)) return
+    if (claimed.has(weight)) return
+    if (reps !== standing.bestRepsAtWeight[weight]) return
+
+    claimed.add(weight)
+    if (!s._id || assignment.has(String(s._id))) return   // already the weight holder
+    assignment.set(String(s._id), ['reps'])
   })
+
+  return { standing, assignment }
 }
 
-// The sets that currently carry a badge, for surfaces that show an
+// badges to render for one set. `records` comes from getBadgeAssignment.
+export const standingAchievements = (set, records) => {
+  const earned = set?.achievements || []
+  // an unrecognised future kind is shown rather than silently dropped
+  const other = earned.filter(k => k !== 'weight' && k !== 'reps')
+  const assigned = (set?._id && records?.assignment?.get(String(set._id))) || []
+  return [...assigned, ...other]
+}
+
+// The sets currently carrying a badge, for surfaces that show an
 // aggregate (a "Personal best" stat card, a best-weight-by-reps row)
-// rather than an individual set.
-//
-// Those surfaces must not decide for themselves what counts as a record.
-// "Is this the most reps at this weight?" is trivially true the first
-// time you ever touch a weight — which is exactly why the server refuses
-// to award a rep record without a prior attempt to beat. Asking that
-// question independently would badge a set on one tab that shows no
-// badge on another. So aggregates match against the real holders here,
-// and the two can't disagree.
+// rather than an individual set. Those must not decide for themselves
+// what counts as a record, or the same lift ends up badged on one tab
+// and bare on another.
 export const getStandingRecordSets = (history) => {
-  const standing = getStandingRecords(history)
+  const { standing, assignment } = getBadgeAssignment(history)
   const holders = []
 
   history.forEach(entry =>
     entry.sets.forEach(s => {
-      const kinds = standingAchievements(s, standing)
+      const kinds = (s._id && assignment.get(String(s._id))) || []
       if (kinds.length > 0) {
         holders.push({ weight: Number(s.weight), reps: Number(s.reps), kinds })
       }
@@ -260,8 +292,6 @@ export const getStandingRecordSets = (history) => {
 
   return {
     standing,
-    // a weight record is identified by its weight alone; a rep record
-    // needs the rep count too, since it's "most reps at THIS weight"
     holdsWeightRecord: (weight, reps = null) =>
       holders.some(h =>
         h.kinds.includes('weight') &&

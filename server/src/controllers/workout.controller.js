@@ -112,6 +112,10 @@ export const getExerciseHistory = async (req, res, next) => {
           ? {
               date: w.createdAt,
               sets: ex.sets.map(s => ({
+                // _id so the client can pin a record badge to ONE set:
+                // three identical sets at the same weight all tie for
+                // "most reps at it", and only the first should be badged
+                _id:    s._id,
                 reps:   s.reps,
                 weight: s.weight,
                 achievements: s.achievements || [],
