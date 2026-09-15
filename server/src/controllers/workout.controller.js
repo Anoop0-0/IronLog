@@ -1,7 +1,24 @@
 import Workout from '../models/Workout.model.js'
 import { getTodayWindowStart } from '../utils/dateWindow.js'
 import { applyContestScore, applyContestScoresForExercises } from '../utils/contestScoring.js'
-import { validateSet } from '../utils/validate.js'
+import { validateSet, isNonEmptyString } from '../utils/validate.js'
+import { detectSetAchievements } from '../utils/achievements.js'
+
+// every set ever logged for one exercise, flattened. Used to judge a new
+// set against its own past — callers must run this *before* saving the
+// new set, or it'll be compared against itself and never be a record.
+const getPreviousSetsForExercise = async (userId, exerciseName) => {
+  const workouts = await Workout.find({
+    userId,
+    'exercises.name': exerciseName,
+  }).select('exercises')
+
+  return workouts.flatMap(w =>
+    w.exercises
+      .filter(ex => ex.name === exerciseName)
+      .flatMap(ex => ex.sets.map(s => ({ reps: s.reps, weight: s.weight })))
+  )
+}
 
 // ── get all workouts for logged in user ───────────────
 export const getWorkouts = async (req, res, next) => {
@@ -24,6 +41,38 @@ export const getTodayWorkout = async (req, res, next) => {
     }).sort({ createdAt: -1 })
 
     res.json(workout || null)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ── full history for one exercise, across all workouts ─
+export const getExerciseHistory = async (req, res, next) => {
+  try {
+    const { name } = req.params
+
+    const workouts = await Workout.find({
+      userId: req.user._id,
+      'exercises.name': name,
+    }).sort({ createdAt: -1 })
+
+    const history = workouts
+      .map(w => {
+        const ex = w.exercises.find(e => e.name === name)
+        return ex
+          ? {
+              date: w.createdAt,
+              sets: ex.sets.map(s => ({
+                reps:   s.reps,
+                weight: s.weight,
+                achievements: s.achievements || [],
+              })),
+            }
+          : null
+      })
+      .filter(entry => entry && entry.sets.length > 0)
+
+    res.json(history)
   } catch (err) {
     next(err)
   }
@@ -130,7 +179,9 @@ export const addSetToToday = async (req, res, next) => {
   try {
     const { exerciseName, bodyPart, notes, set } = req.body
 
-    if (!exerciseName || !set) {
+    // exerciseName reaches a query filter below (the achievement lookup),
+    // so it has to be a real string, not an operator object
+    if (!isNonEmptyString(exerciseName) || !set) {
       return res.status(400).json({ message: 'Exercise name, reps and weight required' })
     }
 
@@ -139,10 +190,15 @@ export const addSetToToday = async (req, res, next) => {
       return res.status(400).json({ message: setError })
     }
 
+    // must run before the new set is saved, so it's judged against the
+    // sets that came before it rather than including itself
+    const previousSets = await getPreviousSetsForExercise(req.user._id, exerciseName)
+
     const cleanSet = {
       reps:   parseFloat(set.reps),
       weight: parseFloat(set.weight),
     }
+    cleanSet.achievements = detectSetAchievements(previousSets, cleanSet.reps, cleanSet.weight)
 
     const workout = await Workout.findOne({
       userId:    req.user._id,

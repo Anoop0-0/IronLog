@@ -27,6 +27,8 @@ function EditProfileForm() {
   const { user, updateUser } = useAuth()
   const [username, setUsername] = useState(user?.username || '')
   const [email,    setEmail]    = useState(user?.email || '')
+  const [height,   setHeight]   = useState(user?.heightCm ?? '')
+  const [weight,   setWeight]   = useState(user?.weightKg ?? '')
   const [loading,  setLoading]  = useState(false)
   const [message,  setMessage]  = useState(null) // { type, text }
 
@@ -34,7 +36,12 @@ function EditProfileForm() {
     setLoading(true)
     setMessage(null)
     try {
-      const res = await updateProfile({ username, email })
+      const res = await updateProfile({
+        username, email,
+        // '' means "clear it" — the server treats that as null, not "skip"
+        heightCm: height === '' ? '' : Number(height),
+        weightKg: weight === '' ? '' : Number(weight),
+      })
       updateUser({ ...user, ...res.data.user })
       setMessage({ type: 'success', text: 'Profile updated' })
     } catch (err) {
@@ -66,6 +73,32 @@ function EditProfileForm() {
             className="w-full bg-gray-800 border border-gray-700 rounded-lg
                        px-3 py-2 text-sm text-white outline-none focus:border-red-700"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Height (cm)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="e.g. 178"
+              value={height}
+              onChange={e => setHeight(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg
+                         px-3 py-2 text-sm text-white outline-none focus:border-red-700"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Weight (kg)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="e.g. 75"
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg
+                         px-3 py-2 text-sm text-white outline-none focus:border-red-700"
+            />
+          </div>
         </div>
         <button
           onClick={handleSave}

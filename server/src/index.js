@@ -6,6 +6,7 @@ import dotenv    from 'dotenv'
 import authRoutes    from './routes/auth.routes.js'
 import workoutRoutes from './routes/workout.routes.js'
 import contestRoutes from './routes/contest.routes.js'
+import exerciseRoutes from './routes/exercise.routes.js'
 import { errorHandler } from './middleware/error.middleware.js'
 
 dotenv.config()
@@ -56,6 +57,7 @@ app.use((req, res, next) => {
 app.use('/api/auth',     authRoutes)
 app.use('/api/workouts', workoutRoutes)
 app.use('/api/contests', contestRoutes)
+app.use('/api/exercises', exerciseRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'IRONLOG API running' })

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getWorkouts,
   getTodayWorkout,
+  getExerciseHistory,
   logWorkout,
   deleteWorkout,
   updateWorkout,
@@ -19,6 +20,7 @@ router.use(protect)
 
 router.get('/',                  getWorkouts)
 router.get('/today',             getTodayWorkout)
+router.get('/exercise/:name/history', getExerciseHistory)
 router.post('/',                 logWorkout)
 router.post('/today/set',        addSetToToday)
 router.put('/today/set/:setId',  updateSetInToday)

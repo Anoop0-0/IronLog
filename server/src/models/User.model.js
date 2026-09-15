@@ -29,6 +29,15 @@ const userSchema=new mongoose.Schema({
     resetPasswordExpires: {
   type: Date,
   default: null,
+},
+    // body stats — both optional, shown on Profile
+    heightCm: {
+  type: Number,
+  default: null,
+},
+    weightKg: {
+  type: Number,
+  default: null,
 }
 },{timestamps:true})
 

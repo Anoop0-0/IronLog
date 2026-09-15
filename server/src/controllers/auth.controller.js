@@ -22,7 +22,18 @@ const publicUser = (user) => ({
     username:    user.username,
     email:       user.email,
     hasPassword: !!user.password,
+    heightCm:    user.heightCm ?? null,
+    weightKg:    user.weightKg ?? null,
 })
+
+// heightCm: 50-250, weightKg: 20-300 — generous bounds, just enough to
+// reject obvious garbage/typos. `null`/'' means "clear the value".
+const parseBodyMeasurement = (value, min, max) => {
+  if (value === null || value === '') return { value: null }
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < min || n > max) return { error: true }
+  return { value: n }
+}
 
 //register
 export const register=async(req,res,next)=>{
@@ -267,7 +278,7 @@ export const changePassword = async (req, res, next) => {
 // ── update profile (username / email) ─────────────────
 export const updateProfile = async (req, res, next) => {
   try {
-    const { username, email } = req.body
+    const { username, email, heightCm, weightKg } = req.body
     const updates = {}
 
     if (username !== undefined) {
@@ -284,23 +295,41 @@ export const updateProfile = async (req, res, next) => {
       updates.email = email.trim().toLowerCase()
     }
 
+    if (heightCm !== undefined) {
+      const parsed = parseBodyMeasurement(heightCm, 50, 250)
+      if (parsed.error) return res.status(400).json({ message: 'Height must be between 50 and 250 cm' })
+      updates.heightCm = parsed.value
+    }
+
+    if (weightKg !== undefined) {
+      const parsed = parseBodyMeasurement(weightKg, 20, 300)
+      if (parsed.error) return res.status(400).json({ message: 'Weight must be between 20 and 300 kg' })
+      updates.weightKg = parsed.value
+    }
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: 'Nothing to update' })
     }
 
-    const existing = await User.findOne({
-      _id: { $ne: req.user._id },
-      $or: [
-        ...(updates.username ? [{ username: updates.username }] : []),
-        ...(updates.email    ? [{ email:    updates.email    }] : []),
-      ],
-    })
-    if (existing) {
-      return res.status(400).json({
-        message: existing.email === updates.email
-          ? 'Email already in use'
-          : 'Username already taken'
+    // only worth the uniqueness check when username/email are actually
+    // changing — an empty $or here would be a bug (matches nothing
+    // useful, or errors depending on the MongoDB version), and it's also
+    // just wasted work on a height/weight-only update
+    if (updates.username || updates.email) {
+      const existing = await User.findOne({
+        _id: { $ne: req.user._id },
+        $or: [
+          ...(updates.username ? [{ username: updates.username }] : []),
+          ...(updates.email    ? [{ email:    updates.email    }] : []),
+        ],
       })
+      if (existing) {
+        return res.status(400).json({
+          message: existing.email === updates.email
+            ? 'Email already in use'
+            : 'Username already taken'
+        })
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true })

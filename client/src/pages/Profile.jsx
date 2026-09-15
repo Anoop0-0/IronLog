@@ -4,11 +4,16 @@ import AppLayout        from '../components/layout/AppLayout'
 import { useAuth }      from '../hooks/useAuth'
 import { useWorkouts }  from '../hooks/useWorkouts'
 import AccountSettings  from '../components/profile/AccountSettings'
+import PRCard           from '../components/charts/PrCard'
 import {
   getTotalVolume,
   getTotalSets,
   getMostTrainedPart,
+  getPersonalRecords,
 } from '../utils/progressHelpers'
+import { navigateToExerciseGraphs } from '../utils/exerciseNav'
+
+const PR_PREVIEW_COUNT = 5
 
 // single stat card
 function StatCard({ label, value, sub }) {
@@ -63,6 +68,8 @@ export default function Profile() {
   const totalVolume   = useMemo(() => getTotalVolume(workouts),     [workouts])
   const totalSets     = useMemo(() => getTotalSets(workouts),       [workouts])
   const topBodyPart   = useMemo(() => getMostTrainedPart(workouts), [workouts])
+  const allPRs        = useMemo(() => getPersonalRecords(workouts), [workouts])
+  const previewPRs    = allPRs.slice(0, PR_PREVIEW_COUNT)
 
   // format volume — show in tonnes if over 1000kg
   const volumeDisplay = totalVolume >= 1000
@@ -96,6 +103,29 @@ export default function Profile() {
         <p className="text-sm text-gray-400 mt-0.5">
           {user?.email ?? ''}
         </p>
+
+        {/* Body stats */}
+        {user?.heightCm || user?.weightKg ? (
+          <div className="flex gap-4 mt-3">
+            {user?.heightCm && (
+              <span className="text-sm text-gray-300">
+                <span className="text-white font-semibold">{user.heightCm}</span> cm
+              </span>
+            )}
+            {user?.weightKg && (
+              <span className="text-sm text-gray-300">
+                <span className="text-white font-semibold">{user.weightKg}</span> kg
+              </span>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="text-xs text-gray-500 active:text-gray-300 mt-2 transition-colors"
+          >
+            + Add height & weight
+          </button>
+        )}
       </div>
 
       {/* Stats grid */}
@@ -137,6 +167,35 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Personal records preview */}
+      {!loading && allPRs.length > 0 && (
+        <div className="px-4 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xs font-medium text-gray-400 uppercase
+                           tracking-wider">
+              Personal records
+            </h2>
+            <button
+              onClick={() => navigate('/progress')}
+              className="text-xs text-red-400 font-medium active:text-red-300 transition-colors"
+            >
+              View all →
+            </button>
+          </div>
+          <div className="space-y-3">
+            {previewPRs.map(pr => (
+              <button
+                key={pr.exercise}
+                onClick={() => navigateToExerciseGraphs(navigate, pr)}
+                className="w-full text-left active:opacity-80 transition-opacity"
+              >
+                <PRCard record={pr} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Account section */}
       <div className="px-4 mb-6">
