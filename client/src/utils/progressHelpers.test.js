@@ -15,6 +15,7 @@ import {
   getBadgeAssignment,
   standingAchievements,
   getStandingRecordSets,
+  getBadgeAssignmentsByExercise,
 } from './progressHelpers'
 
 const workout = (createdAt, exercises) => ({ createdAt, exercises })
@@ -471,5 +472,40 @@ describe('getStandingRecordSets', () => {
     const r = getStandingRecordSets([])
     expect(r.holdsWeightRecord(100)).toBe(false)
     expect(r.holdsRepsRecord(100, 5)).toBe(false)
+  })
+})
+
+describe('getBadgeAssignmentsByExercise', () => {
+  const w = (createdAt, exercises) => ({ createdAt, exercises })
+  const e = (name, sets) => ({ name, bodyPart: 'Chest', sets })
+
+  it('keeps each exercise\'s records separate', () => {
+    // 60kg is the heaviest Bench set but nowhere near the Squat numbers —
+    // judging them together would badge the wrong rows
+    const workouts = [
+      w('2026-01-02', [e('Bench Press', [set(5, 60)]), e('Squat', [set(5, 140)])]),
+      w('2026-01-01', [e('Bench Press', [set(5, 50)]), e('Squat', [set(5, 120)])]),
+    ]
+    const byExercise = getBadgeAssignmentsByExercise(workouts)
+    expect(Object.keys(byExercise).sort()).toEqual(['Bench Press', 'Squat'])
+
+    const bench = workouts[0].exercises[0].sets[0]      // 60kg — heaviest Bench
+    const squat = workouts[0].exercises[1].sets[0]      // 140kg — heaviest Squat
+    expect(standingAchievements(bench, byExercise['Bench Press'])).toEqual(['weight'])
+    expect(standingAchievements(squat, byExercise['Squat'])).toEqual(['weight'])
+  })
+
+  it('gathers an exercise trained across several days', () => {
+    const workouts = [
+      w('2026-01-02', [e('Bench Press', [set(5, 50)])]),
+      w('2026-01-01', [e('Bench Press', [set(5, 80)])]),   // the heavier day is older
+    ]
+    const records = getBadgeAssignmentsByExercise(workouts)['Bench Press']
+    expect(standingAchievements(workouts[1].exercises[0].sets[0], records)).toEqual(['weight'])
+    expect(standingAchievements(workouts[0].exercises[0].sets[0], records)).toEqual(['reps'])
+  })
+
+  it('returns an empty map for no workouts', () => {
+    expect(getBadgeAssignmentsByExercise([])).toEqual({})
   })
 })

@@ -1,7 +1,12 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
+import { AchievementBadge } from '../components/workout/Achievement'
+import { useWorkouts } from '../hooks/useWorkouts'
+import {
+  getBadgeAssignmentsByExercise, standingAchievements,
+} from '../utils/progressHelpers'
 import { getTodayWorkout, getWorkoutForDay } from '../api/workouts.api'
 import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
 
@@ -12,6 +17,16 @@ export default function WorkoutLogger() {
   const [error,      setError]      = useState('')
   const navigate = useNavigate()
   const [params] = useSearchParams()
+
+  // Badges need each exercise's full history, which the day fetch below
+  // deliberately doesn't carry. Loaded separately and treated as
+  // supplementary: this page renders from the day's own workout, so if
+  // the list is slow or fails the sets still show, just unbadged.
+  const { workouts } = useWorkouts()
+  const badgesByExercise = useMemo(
+    () => getBadgeAssignmentsByExercise(workouts),
+    [workouts]
+  )
 
   // ?date=YYYY-MM-DD logs against a past day; absent means today, which
   // keeps the server on its rolling-24h window rather than pinning the
@@ -140,12 +155,17 @@ export default function WorkoutLogger() {
                   first, matching every other set list in the app. */}
               {sets.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-800 grid
-                                grid-cols-[1.5rem_1fr] items-center gap-x-3 gap-y-0.5">
+                                grid-cols-[1.5rem_1fr_auto] items-center gap-x-3 gap-y-0.5">
                   {sets.map((s, i) => (
                     <Fragment key={i}>
                       <span className="h-5 rounded-md bg-gray-800/80 text-[10px] font-medium
                                        text-gray-500 flex items-center justify-center">
                         {i + 1}
+                      </span>
+                      <span className="flex items-center justify-end gap-1.5">
+                        {standingAchievements(s, badgesByExercise[ex.name]).map(kind => (
+                          <AchievementBadge key={kind} kind={kind} />
+                        ))}
                       </span>
                       <span className="text-sm tabular-nums text-right whitespace-nowrap">
                         <span className="text-white font-semibold">{s.weight}</span>

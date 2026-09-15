@@ -308,6 +308,26 @@ export const getStandingRecordSets = (history) => {
   }
 }
 
+// Badge assignments for every exercise in an account, keyed by exercise
+// name. Any screen holding the full workout list can render badges from
+// this without fetching per-exercise history — the sets and their earned
+// flags are already in the list.
+export const getBadgeAssignmentsByExercise = (workouts) => {
+  const byName = {}
+  workouts.forEach(w =>
+    w.exercises.forEach(ex => {
+      if (!byName[ex.name]) byName[ex.name] = []
+      byName[ex.name].push({ date: w.createdAt, sets: ex.sets })
+    })
+  )
+
+  const out = {}
+  Object.entries(byName).forEach(([name, history]) => {
+    out[name] = getBadgeAssignment(history)
+  })
+  return out
+}
+
 // heaviest weight ever lifted at each distinct rep count, e.g.
 // [{ reps: 5, weight: 90 }, { reps: 8, weight: 80 }], sorted by reps asc
 export const getBestWeightByReps = (history) => {
