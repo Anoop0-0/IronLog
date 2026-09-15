@@ -12,7 +12,7 @@ import {
 import {
   getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
   filterByDays, TIMELINE_RANGES,
-  getStandingRecords, standingAchievements, getStandingRecordSets,
+  getBadgeAssignment, standingAchievements, getStandingRecordSets,
 } from '../utils/progressHelpers'
 import {
   EXERCISE_GRAPHS, DEFAULT_GRAPH_ID, getExerciseGraphData,
@@ -89,7 +89,8 @@ export default function ExerciseDetail() {
 
         if (todayEx) {
           const loadedSets = todayEx.sets.map(s => ({
-            id: s._id, originalId: s._id, reps: s.reps, weight: s.weight,
+            id: s._id, originalId: s._id, _id: s._id,
+            reps: s.reps, weight: s.weight,
             achievements: s.achievements || [],
           }))
           setSets(loadedSets)
@@ -188,7 +189,7 @@ export default function ExerciseDetail() {
         const savedSet = savedExercise.sets[savedExercise.sets.length - 1]
         const achievements = savedSet.achievements || []
         setSets(prev => [...prev, {
-          id: savedSet._id, originalId: savedSet._id,
+          id: savedSet._id, originalId: savedSet._id, _id: savedSet._id,
           reps: savedSet.reps, weight: savedSet.weight, achievements,
         }])
         if (achievements.length > 0) {
@@ -246,7 +247,7 @@ export default function ExerciseDetail() {
   // deliberately off the unfiltered history: a badge claims "this is the
   // record", so narrowing the timeline must not promote an old set into
   // one it doesn't actually hold
-  const standing = useMemo(() => getStandingRecords(history), [history])
+  const standing = useMemo(() => getBadgeAssignment(history), [history])
 
   // aggregate surfaces on the Graphs tab match against the sets that
   // actually hold a badge, so they can never badge something the Log and
