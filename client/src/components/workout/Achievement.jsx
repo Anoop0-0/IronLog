@@ -47,9 +47,14 @@ const detailFor = (kind, reps, weight) =>
     ? `${weight}kg — the heaviest you've lifted for this exercise`
     : `${reps} reps at ${weight}kg — the most you've done at this weight`
 
-// Small pill shown next to a set that earned a record. Fixed height and
-// no-wrap so a row carrying one badge lines up with a row carrying two,
-// or none — the set lists put these in their own grid column.
+// Small pill shown next to a set that earned a record.
+//
+// Fixed WIDTH as well as height, and centred content: "REP PR" is a good
+// deal wider than "PR", so sizing to content left their edges ~30px
+// apart down the column even with the right edges aligned, which reads
+// as ragged. Equal boxes make both edges straight lines. w-[4.5rem] is
+// sized to the longest label plus its icon — check it still fits before
+// adding a longer one.
 export function AchievementBadge({ kind }) {
   const label = LABELS[kind]
   if (!label) return null
@@ -58,9 +63,9 @@ export function AchievementBadge({ kind }) {
   return (
     <span
       title={label.title}
-      className={`inline-flex items-center gap-1 h-5 px-1.5 rounded-full border
-                  text-[10px] font-bold uppercase tracking-wide
-                  whitespace-nowrap ${pill}`}
+      className={`inline-flex items-center justify-center gap-1 h-5 w-[4.5rem]
+                  rounded-full border text-[10px] font-bold uppercase
+                  tracking-wide whitespace-nowrap ${pill}`}
     >
       <Icon size={10} />
       {badge}

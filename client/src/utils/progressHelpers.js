@@ -180,6 +180,60 @@ export const getEstimated1RM = (history) => {
   }, null)
 }
 
+// ── which records still stand ───────────────────────────────────────
+// A set's stored `achievements` record what it earned at the moment it
+// was logged, which is the only way that fact survives (see the server's
+// utils/achievements.js). For display though, a "PR" badge sitting on a
+// set from three heavier sessions ago is just wrong to look at — three
+// sets each claiming to be the personal best, when only one is.
+//
+// So a stored badge is rendered only while its record still stands:
+//   'weight' — still the heaviest weight logged for this exercise
+//   'reps'   — still the most reps done at that exact weight
+//
+// Filtering at display time rather than clearing the stored value keeps
+// this self-healing: edit or delete the set that took the record and the
+// previous holder's badge comes back on its own, with no write needed.
+//
+// No tie-breaking is required. Records are earned on strictly-greater-
+// than, so a later set matching the record doesn't take it, and at most
+// one set can hold a given badge.
+export const getStandingRecords = (history) => {
+  const allSets = history.flatMap(entry => entry.sets)
+
+  let maxWeight = null
+  const bestRepsAtWeight = {}
+
+  allSets.forEach(s => {
+    const weight = Number(s.weight)
+    const reps   = Number(s.reps)
+    if (!Number.isFinite(weight) || !Number.isFinite(reps)) return
+
+    if (maxWeight === null || weight > maxWeight) maxWeight = weight
+    const best = bestRepsAtWeight[weight]
+    if (best === undefined || reps > best) bestRepsAtWeight[weight] = reps
+  })
+
+  return { maxWeight, bestRepsAtWeight }
+}
+
+// the subset of a set's stored achievements that are still the record.
+// Numbers are coerced because a just-edited set holds its weight/reps as
+// strings straight from the input, and '5' === 5 is false.
+export const standingAchievements = (set, standing) => {
+  const kinds = set?.achievements || []
+  if (!standing || kinds.length === 0) return []
+
+  const weight = Number(set.weight)
+  const reps   = Number(set.reps)
+
+  return kinds.filter(kind => {
+    if (kind === 'weight') return weight === standing.maxWeight
+    if (kind === 'reps')   return reps === standing.bestRepsAtWeight[weight]
+    return true   // an unknown future kind: show it rather than silently hide it
+  })
+}
+
 // heaviest weight ever lifted at each distinct rep count, e.g.
 // [{ reps: 5, weight: 90 }, { reps: 8, weight: 80 }], sorted by reps asc
 export const getBestWeightByReps = (history) => {
