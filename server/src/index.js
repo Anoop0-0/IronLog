@@ -21,7 +21,9 @@ const PORT = process.env.PORT || 5000
 // Vercel team/scope instead
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://iron-log-delta-dusky.vercel.app',
+  // the two stable Vercel aliases that follow production. Both already
+  // match vercelPreviewPattern below, but they're listed explicitly so
+  // the app's real URLs stay obvious to anyone reading this list.
   'https://iron-log-anoop0-0s-projects.vercel.app',
   'https://iron-log-git-main-anoop0-0s-projects.vercel.app',
   'https://www.anoopbaghel.in',
