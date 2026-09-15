@@ -1,4 +1,6 @@
 import { useState, Fragment } from 'react'
+import { AchievementBadge } from './Achievement'
+import { standingAchievements } from '../../utils/progressHelpers'
 
 const formatDate = (iso) => {
   const d = new Date(iso)
@@ -9,7 +11,7 @@ const formatDate = (iso) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function ExerciseRow({ exercise, defaultExpanded = false }) {
+function ExerciseRow({ exercise, defaultExpanded = false, records }) {
   const [open, setOpen] = useState(defaultExpanded)
   const { name, sets } = exercise
   if (!sets || sets.length === 0) return null
@@ -44,15 +46,26 @@ function ExerciseRow({ exercise, defaultExpanded = false }) {
       </button>
 
       {open && (
-        // every set rendered identically — set 1 used to be styled as a
-        // headline and the rest as an afterthought, which read as two
-        // different kinds of row once they were all on screen together
-        <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pl-1">
+        // one grid for the whole list so the numbers line up in columns
+        // instead of drifting with each row's width
+        <div className="mt-2 grid grid-cols-[1.5rem_1fr_auto] items-center gap-x-3 gap-y-0.5">
           {sets.map((set, i) => (
             <Fragment key={i}>
-              <span className="text-xs text-gray-400">Set {i + 1}</span>
-              <span className="text-xs text-gray-300 text-right tabular-nums">
-                {set.reps} reps @ {set.weight}kg
+              <span className="h-5 rounded-md bg-gray-800/80 text-[10px] font-medium
+                               text-gray-500 flex items-center justify-center">
+                {i + 1}
+              </span>
+              <span className="flex items-center justify-end gap-1.5">
+                {standingAchievements(set, records).map(kind => (
+                  <AchievementBadge key={kind} kind={kind} />
+                ))}
+              </span>
+              <span className="text-sm tabular-nums text-right whitespace-nowrap">
+                <span className="text-white font-semibold">{set.weight}</span>
+                <span className="text-gray-500 text-xs ml-0.5">kg</span>
+                <span className="text-gray-600 mx-1.5">×</span>
+                <span className="text-white font-semibold">{set.reps}</span>
+                <span className="text-gray-500 text-xs ml-0.5">reps</span>
               </span>
             </Fragment>
           ))}
@@ -62,48 +75,68 @@ function ExerciseRow({ exercise, defaultExpanded = false }) {
   )
 }
 
+// A labelled field rather than a bare number box: the unit sits inside
+// the input, so a column of them reads as "60 kg" instead of leaving you
+// to remember which box was which.
+function SetField({ value, unit, onChange, inputMode, max }) {
+  return (
+    <div className="relative flex-1">
+      <input
+        type="number"
+        inputMode={inputMode}
+        min="1"
+        max={max}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg
+                   pl-3 pr-8 py-2.5 text-sm text-white font-semibold tabular-nums
+                   outline-none focus:border-red-600 focus:bg-gray-800/60
+                   transition-colors"
+      />
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2
+                       text-[11px] text-gray-500">
+        {unit}
+      </span>
+    </div>
+  )
+}
+
 function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
   return (
-    <div className="grid grid-cols-12 items-center gap-1 py-1">
-      <span className="col-span-2 text-xs text-gray-400">{index + 1}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min="1"
-        max="1000"
-        value={set.reps}
-        onChange={e => onChange('reps', e.target.value)}
-        placeholder="reps"
-        className="col-span-4 bg-gray-800 border border-gray-700 rounded-lg
-                   px-2 py-2 text-sm text-white text-center outline-none
-                   focus:border-red-700"
-      />
-      <input
-        type="number"
-        inputMode="decimal"
-        min="1"
-        max="2000"
+    <div className="flex items-center gap-2 py-1">
+      <span className="w-6 h-6 shrink-0 rounded-md bg-gray-800 text-[11px] font-medium
+                       text-gray-500 flex items-center justify-center">
+        {index + 1}
+      </span>
+      <SetField
         value={set.weight}
-        onChange={e => onChange('weight', e.target.value)}
-        placeholder="kg"
-        className="col-span-4 bg-gray-800 border border-gray-700 rounded-lg
-                   px-2 py-2 text-sm text-white text-center outline-none
-                   focus:border-red-700"
+        unit="kg"
+        inputMode="decimal"
+        max="2000"
+        onChange={v => onChange('weight', v)}
       />
-      <div className="col-span-2 flex justify-center">
-        {showDelete && (
-          <button
-            onClick={onDelete}
-            className="text-gray-500 active:text-red-500 p-1"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        )}
-      </div>
+      <SetField
+        value={set.reps}
+        unit="reps"
+        inputMode="numeric"
+        max="1000"
+        onChange={v => onChange('reps', v)}
+      />
+      {/* always rendered so the fields don't shift width on the last set */}
+      <button
+        onClick={onDelete}
+        disabled={!showDelete}
+        aria-label={`Remove set ${index + 1}`}
+        className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center
+                   text-gray-600 active:text-red-400 active:bg-red-950/30
+                   disabled:opacity-0 disabled:pointer-events-none transition-colors"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
   )
 }
@@ -112,7 +145,7 @@ function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
 // screen's "Today" card wants that (you're mid-session, you want to see
 // what you've done); the history list leaves them collapsed so a long
 // back-catalogue stays scannable.
-export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = false }) {
+export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = false, badgesFor }) {
   const { exercises, createdAt } = workout
   const [editing,         setEditing]         = useState(false)
   const [editedExercises, setEditedExercises] = useState([])
@@ -223,7 +256,12 @@ export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = 
       {!editing && (
         <div className="px-4 pb-4">
           {exercises.map((ex, i) => (
-            <ExerciseRow key={i} exercise={ex} defaultExpanded={expandSets} />
+            <ExerciseRow
+              key={i}
+              exercise={ex}
+              defaultExpanded={expandSets}
+              records={badgesFor?.(ex.name)}
+            />
           ))}
         </div>
       )}
@@ -235,10 +273,11 @@ export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = 
             <div key={exIndex} className="border-t border-gray-800 pt-3 pb-2">
               <p className="text-sm font-medium text-gray-300 mb-2">{ex.name}</p>
 
-              <div className="grid grid-cols-12 mb-1">
-                <span className="col-span-2 text-xs text-gray-400">Set</span>
-                <span className="col-span-4 text-xs text-gray-400 text-center">Reps</span>
-                <span className="col-span-4 text-xs text-gray-400 text-center">kg</span>
+              <div className="flex items-center gap-2 mb-1.5 px-0.5">
+                <span className="w-6 shrink-0" />
+                <span className="flex-1 text-[10px] uppercase tracking-wider text-gray-500">Weight</span>
+                <span className="flex-1 text-[10px] uppercase tracking-wider text-gray-500">Reps</span>
+                <span className="w-8 shrink-0" />
               </div>
 
               {ex.sets.map((set, setIndex) => (
@@ -254,8 +293,9 @@ export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = 
 
               <button
                 onClick={() => addSet(exIndex)}
-                className="text-xs text-gray-400 active:text-red-400
-                           transition-colors mt-1"
+                className="w-full mt-2 py-2 rounded-lg border border-dashed border-gray-700
+                           text-xs text-gray-500 active:border-red-700 active:text-red-400
+                           transition-colors"
               >
                 + Add set
               </button>

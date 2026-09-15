@@ -5,7 +5,8 @@ import { useWorkouts }        from '../hooks/useWorkouts'
 import AppLayout              from '../components/layout/AppLayout'
 import WorkoutCard            from '../components/workout/WorkoutCard'
 import CalendarSheet          from '../components/workout/CalendarSheet'
-import { getActiveSession, toDayKey } from '../utils/workoutDays'
+import { getActiveSession, toDayKey, formatDayKey } from '../utils/workoutDays'
+import { getBadgeAssignment } from '../utils/progressHelpers'
 
 function SkeletonCard() {
   return (
@@ -26,19 +27,66 @@ export default function Dashboard() {
   const [actionError,  setActionError]  = useState('')
   const [calendarOpen, setCalendarOpen] = useState(false)
 
-  // "today" here follows the server's rolling 24h window rather than the
+  // which day the card is showing. null = today's session; otherwise a
+  // day key. Stepping back moves through days you actually trained, not
+  // every calendar day — walking past empty ones would take a press each.
+  const [viewDay, setViewDay] = useState(null)
+
+  // "today" follows the server's rolling 24h window rather than the
   // calendar date, so this card always agrees with what the Log tab will
   // append to — see utils/workoutDays.js
   const today = useMemo(() => getActiveSession(workouts), [workouts])
 
-  const todaysSetCount = today
-    ? today.exercises.reduce((n, ex) => n + ex.sets.length, 0)
+  // past workouts, newest first, excluding whatever today's session is
+  const pastWorkouts = useMemo(() => {
+    const active = today?._id
+    return workouts
+      .filter(w => w._id !== active)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  }, [workouts, today])
+
+  const viewIndex = viewDay
+    ? pastWorkouts.findIndex(w => toDayKey(w.createdAt) === viewDay)
+    : -1
+
+  const shown       = viewIndex >= 0 ? pastWorkouts[viewIndex] : today
+  const isToday     = viewIndex < 0
+  const hasEarlier  = viewIndex + 1 < pastWorkouts.length
+
+  const setCount = shown
+    ? shown.exercises.reduce((n, ex) => n + ex.sets.length, 0)
     : 0
+
+  // Badges need the full history of each exercise, which every workout in
+  // the account already carries — no extra fetch. Built once here rather
+  // than per card so stepping between days doesn't recompute it.
+  const badgesByExercise = useMemo(() => {
+    const byName = {}
+    workouts.forEach(w =>
+      w.exercises.forEach(ex => {
+        if (!byName[ex.name]) byName[ex.name] = []
+        byName[ex.name].push({ date: w.createdAt, sets: ex.sets })
+      })
+    )
+    const out = {}
+    Object.entries(byName).forEach(([name, history]) => {
+      out[name] = getBadgeAssignment(history)
+    })
+    return out
+  }, [workouts])
+
+  const stepBack = () => {
+    const next = pastWorkouts[viewIndex + 1]
+    if (next) setViewDay(toDayKey(next.createdAt))
+  }
 
   const handleDelete = async (id) => {
     setActionError('')
-    try { await deleteById(id) }
-    catch { setActionError('Failed to delete workout — try again') }
+    try {
+      await deleteById(id)
+      if (!isToday) setViewDay(null)   // the day just vanished from under us
+    } catch { setActionError('Failed to delete workout — try again') }
   }
 
   const handleUpdate = async (id, exercises) => {
@@ -51,11 +99,11 @@ export default function Dashboard() {
 
   const handlePickDay = (key, hasWorkout) => {
     setCalendarOpen(false)
-    // today's session lives on this screen, so a tap on it just closes
-    if (today && toDayKey(today.createdAt) === key) return
-    // a day with something logged opens for viewing; an empty one opens
-    // the logger for that date, which is the point of picking it
-    navigate(hasWorkout ? `/history?date=${key}` : `/log?date=${key}`)
+    if (today && toDayKey(today.createdAt) === key) { setViewDay(null); return }
+    // a day you trained is shown right here; an empty one opens the
+    // logger for that date, which is the point of picking it
+    if (hasWorkout) setViewDay(key)
+    else navigate(`/log?date=${key}`)
   }
 
   return (
@@ -76,19 +124,28 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Today */}
-      <div className="px-4 mb-6">
-        <div className="flex justify-between items-center mb-3">
+      {/* The day being shown */}
+      <div className="px-4 mb-4">
+        <div className="flex justify-between items-baseline mb-3">
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-            Today
+            {isToday ? 'Today' : formatDayKey(viewDay)}
           </h2>
-          {today && (
-            <span className="text-xs text-gray-400">
-              {today.exercises.length} exercise{today.exercises.length === 1 ? '' : 's'}
-              {' · '}
-              {todaysSetCount} set{todaysSetCount === 1 ? '' : 's'}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {shown && (
+              <span className="text-xs text-gray-400">
+                {shown.exercises.length} exercise{shown.exercises.length === 1 ? '' : 's'}
+                {' · '}{setCount} set{setCount === 1 ? '' : 's'}
+              </span>
+            )}
+            {!isToday && (
+              <button
+                onClick={() => setViewDay(null)}
+                className="text-xs text-red-400 font-medium active:text-red-300 transition-colors"
+              >
+                Today
+              </button>
+            )}
+          </div>
         </div>
 
         {loading && <SkeletonCard />}
@@ -107,28 +164,38 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!loading && !error && today && (
-          // the action sits above the card: it's the reason you opened the
-          // app mid-session, and with every set now expanded the card can
-          // run long enough to push a button below it off-screen
+        {!loading && !error && shown && (
           <div className="space-y-3">
-            <button
-              onClick={() => navigate('/log')}
-              className="w-full bg-red-600 active:scale-95 transition-all
-                         text-white font-semibold py-4 rounded-xl text-base"
-            >
-              + Add to today's workout
-            </button>
+            {isToday && (
+              <button
+                onClick={() => navigate('/log')}
+                className="w-full bg-red-600 active:scale-95 transition-all
+                           text-white font-semibold py-4 rounded-xl text-base"
+              >
+                + Add to today's workout
+              </button>
+            )}
             <WorkoutCard
-              workout={today}
+              workout={shown}
               expandSets
-              onDelete={() => handleDelete(today._id)}
-              onUpdate={(exercises) => handleUpdate(today._id, exercises)}
+              badgesFor={name => badgesByExercise[name]}
+              onDelete={() => handleDelete(shown._id)}
+              onUpdate={(exercises) => handleUpdate(shown._id, exercises)}
             />
+            {!isToday && (
+              <button
+                onClick={() => navigate(`/log?date=${viewDay}`)}
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl py-3.5
+                           text-sm font-medium text-gray-300
+                           active:border-gray-700 transition-colors"
+              >
+                + Add to this day
+              </button>
+            )}
           </div>
         )}
 
-        {!loading && !error && !today && (
+        {!loading && !error && !shown && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
             <p className="text-3xl mb-2">🏋️</p>
             <p className="text-gray-300 font-medium">Nothing logged yet today</p>
@@ -148,36 +215,52 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Browse past sessions */}
-      <div className="px-4">
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate('/history')}
-            className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-4
-                       flex items-center justify-between active:border-gray-700 transition-colors"
-          >
-            <span className="text-sm font-medium text-gray-300">Previous workouts</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </button>
+      {/* Step back a day at a time */}
+      {!loading && !error && (
+        <div className="px-4">
+          <div className="flex gap-3">
+            <button
+              onClick={stepBack}
+              disabled={!hasEarlier}
+              className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-4
+                         flex items-center justify-between transition-colors
+                         active:border-gray-700
+                         disabled:opacity-40 disabled:active:border-gray-800"
+            >
+              <span className="text-sm font-medium text-gray-300">
+                {hasEarlier
+                  ? (isToday ? 'Previous workout' : 'Earlier day')
+                  : 'No earlier workouts'}
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setCalendarOpen(true)}
+              aria-label="Open calendar"
+              className="w-[58px] bg-gray-900 border border-gray-800 rounded-xl
+                         flex items-center justify-center text-gray-300
+                         active:border-gray-700 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <path d="M3 10h18M8 3v4M16 3v4"/>
+              </svg>
+            </button>
+          </div>
 
           <button
-            onClick={() => setCalendarOpen(true)}
-            aria-label="Open calendar"
-            className="w-[58px] bg-gray-900 border border-gray-800 rounded-xl
-                       flex items-center justify-center text-gray-300
-                       active:border-gray-700 transition-colors"
+            onClick={() => navigate('/history')}
+            className="w-full mt-3 text-xs text-gray-500 active:text-gray-300 transition-colors py-1"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="18" height="16" rx="2"/>
-              <path d="M3 10h18M8 3v4M16 3v4"/>
-            </svg>
+            All workouts →
           </button>
         </div>
-      </div>
+      )}
 
       {calendarOpen && (
         <CalendarSheet

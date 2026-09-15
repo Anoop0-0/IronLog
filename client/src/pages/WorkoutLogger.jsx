@@ -134,16 +134,25 @@ export default function WorkoutLogger() {
                 </div>
               </div>
 
-              {/* every set inline — one grid so the numbers line up down
-                  the column instead of drifting with each row's width */}
+              {/* same row treatment as the home card: a numbered chip, the
+                  figures carrying the emphasis and the units muted, all in
+                  one grid so the columns line up down the list. Weight
+                  first, matching every other set list in the app. */}
               {sets.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-800 grid
-                                grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                                grid-cols-[1.5rem_1fr] items-center gap-x-3 gap-y-0.5">
                   {sets.map((s, i) => (
                     <Fragment key={i}>
-                      <span className="text-xs text-gray-400">Set {i + 1}</span>
-                      <span className="text-xs text-gray-300 text-right tabular-nums">
-                        {s.reps} reps @ {s.weight}kg
+                      <span className="h-5 rounded-md bg-gray-800/80 text-[10px] font-medium
+                                       text-gray-500 flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm tabular-nums text-right whitespace-nowrap">
+                        <span className="text-white font-semibold">{s.weight}</span>
+                        <span className="text-gray-500 text-xs ml-0.5">kg</span>
+                        <span className="text-gray-600 mx-1.5">×</span>
+                        <span className="text-white font-semibold">{s.reps}</span>
+                        <span className="text-gray-500 text-xs ml-0.5">reps</span>
                       </span>
                     </Fragment>
                   ))}
