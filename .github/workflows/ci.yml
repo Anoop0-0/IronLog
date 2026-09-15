@@ -26,7 +26,7 @@ jobs:
       - run: npm run build
 
   server:
-    name: Server — syntax check + test
+    name: Server — boot smoke test + tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,4 +41,9 @@ jobs:
       - run: npm ci
       - name: Syntax check every source file
         run: find src -name '*.js' -not -name '*.test.js' -print0 | xargs -0 -n1 node --check
+      # npm test includes src/smoke.test.js, which loads every module and
+      # boots the app on an ephemeral port. The check above only parses —
+      # it passes an import of a name that doesn't exist, which is how a
+      # server that couldn't boot once got through. No database needed:
+      # index.js connects only when it is the entrypoint.
       - run: npm test
