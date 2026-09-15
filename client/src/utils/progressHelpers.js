@@ -186,10 +186,13 @@ export const getEstimated1RM = (history) => {
 // (see the server's utils/achievements.js), which is not the same thing
 // once something later beats it.
 //
-//   'weight' — the heaviest weight logged for this exercise. Taken from
-//     the stored flag, because when several sets share that weight only
-//     the first to reach it took the record, and the data is the only
-//     thing that remembers which one that was.
+//   'weight' — the heaviest weight logged for this exercise, held by the
+//     earliest set to reach it. Derived, NOT read from the stored flag:
+//     several things legitimately leave a set without one (a workout
+//     saved through the bulk edit endpoint before it preserved them, data
+//     predating the feature), and a badge that vanishes because of how a
+//     set was written is worse than one computed from the sets as they
+//     stand.
 //
 //   'reps'   — the most reps done at that particular weight. Derived
 //     from the sets rather than the stored flag: the server only awards
@@ -239,10 +242,8 @@ export const getBadgeAssignment = (history) => {
 
   const ordered = setsChronologically(history)
 
-  // the heaviest lift: the one set that earned 'weight' at that weight
-  const weightHolder = ordered.find(s =>
-    (s.achievements || []).includes('weight') && Number(s.weight) === standing.maxWeight
-  )
+  // the heaviest lift, earliest first if several sets share that weight
+  const weightHolder = ordered.find(s => Number(s.weight) === standing.maxWeight)
   if (weightHolder?._id) assignment.set(String(weightHolder._id), ['weight'])
 
   // best effort at each weight, earliest on a tie, skipping whichever set

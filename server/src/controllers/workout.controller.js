@@ -211,11 +211,18 @@ export const updateWorkout = async (req, res, next) => {
       }
     }
 
+    // Rebuilding each set from scratch dropped two fields that aren't the
+    // caller's to destroy: _id, which set-level edit and delete address
+    // sets by, and achievements, which is the only record of what a set
+    // earned when it was logged. Saving an edit — even one that changed
+    // nothing — silently wiped the PR history of every set in the workout.
     const cleanedExercises = exercises.map(ex => ({
       ...ex,
       sets: ex.sets.map(set => ({
+        ...(set._id ? { _id: set._id } : {}),
         reps:   parseFloat(set.reps),
         weight: parseFloat(set.weight),
+        achievements: set.achievements || [],
       }))
     }))
 
