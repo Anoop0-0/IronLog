@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import Stepper         from '../components/workout/Stepper'
@@ -402,7 +402,11 @@ export default function ExerciseDetail() {
                   <span className="flex-1 text-sm text-white text-center">
                     {set.reps}<span className="text-gray-500 text-xs ml-1">reps</span>
                   </span>
-                  <span className="w-14 flex justify-end gap-1">
+                  {/* fixed width so every row's reps column lands in the
+                      same place whether or not that set earned a badge;
+                      wraps rather than overflowing when a set is both a
+                      weight and a rep record */}
+                  <span className="w-20 shrink-0 flex flex-wrap justify-end gap-1">
                     {(set.achievements || []).map(kind => (
                       <AchievementBadge key={kind} kind={kind} />
                     ))}
@@ -425,17 +429,23 @@ export default function ExerciseDetail() {
               {history.map((entry, i) => (
                 <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                   <p className="text-xs text-gray-400 mb-2">{relativeDate(entry.date)}</p>
-                  <div className="space-y-1">
+                  {/* One grid for the whole list, not a flex row per set:
+                      grid columns size to the widest cell across every row,
+                      so the badges and the weight/reps text line up even
+                      when some sets have a badge, two badges, or none. */}
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1.5 text-sm">
                     {entry.sets.map((s, si) => (
-                      <div key={si} className="flex justify-between items-center text-sm">
+                      <Fragment key={si}>
                         <span className="text-gray-500">Set {si + 1}</span>
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center justify-end gap-1.5">
                           {(s.achievements || []).map(kind => (
                             <AchievementBadge key={kind} kind={kind} />
                           ))}
-                          <span className="text-white">{s.weight}kg × {s.reps} reps</span>
                         </span>
-                      </div>
+                        <span className="text-white text-right tabular-nums">
+                          {s.weight}kg × {s.reps} reps
+                        </span>
+                      </Fragment>
                     ))}
                   </div>
                 </div>

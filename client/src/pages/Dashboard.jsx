@@ -106,12 +106,10 @@ export default function Dashboard() {
         )}
 
         {!loading && !error && today && (
+          // the action sits above the card: it's the reason you opened the
+          // app mid-session, and with every set now expanded the card can
+          // run long enough to push a button below it off-screen
           <div className="space-y-3">
-            <WorkoutCard
-              workout={today}
-              onDelete={() => handleDelete(today._id)}
-              onUpdate={(exercises) => handleUpdate(today._id, exercises)}
-            />
             <button
               onClick={() => navigate('/log')}
               className="w-full bg-red-600 active:scale-95 transition-all
@@ -119,6 +117,12 @@ export default function Dashboard() {
             >
               + Add to today's workout
             </button>
+            <WorkoutCard
+              workout={today}
+              expandSets
+              onDelete={() => handleDelete(today._id)}
+              onUpdate={(exercises) => handleUpdate(today._id, exercises)}
+            />
           </div>
         )}
 
