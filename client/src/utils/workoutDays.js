@@ -71,3 +71,24 @@ export const buildMonthGrid = (year, month) => {
   }
   return cells
 }
+
+// A day key ('2026-09-08') as the ISO instant of LOCAL NOON on that day.
+// This is what every date-aware API call sends: the server can't know the
+// user's timezone, and noon is never within 12 hours of a day boundary in
+// any offset, so it identifies the local day unambiguously. Building it
+// from local date parts (not Date.parse of the key, which is UTC) is what
+// makes that true.
+export const dayKeyToNoon = (dayKey) => {
+  const [year, month, day] = dayKey.split('-').map(Number)
+  return new Date(year, month - 1, day, 12, 0, 0, 0).toISOString()
+}
+
+export const isToday = (dayKey) => dayKey === toDayKey(new Date())
+
+// human label for a day key, e.g. 'Monday, Sep 8'
+export const formatDayKey = (dayKey) => {
+  const [year, month, day] = dayKey.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'short', day: 'numeric',
+  })
+}

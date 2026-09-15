@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
-import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import Stepper         from '../components/workout/Stepper'
 import TrendAreaChart  from '../components/charts/TrendAreaChart'
 import MultiLineChart  from '../components/charts/MultiLineChart'
 import {
-  getTodayWorkout, addSetToToday, updateSetInToday, deleteSetFromToday,
-  updateExerciseNotes, deleteExerciseFromToday, getExerciseHistory,
+  getTodayWorkout, getWorkoutForDay, addSetToToday, updateSetInToday,
+  deleteSetFromToday, updateExerciseNotes, deleteExerciseFromToday,
+  getExerciseHistory,
 } from '../api/workouts.api'
 import {
   getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
@@ -19,6 +20,7 @@ import {
 import { useTimer } from '../hooks/useTimer'
 import { AchievementBadge, AchievementBanner } from '../components/workout/Achievement'
 import { vibrate, ACHIEVEMENT } from '../utils/haptics'
+import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
 
 const TABS = ['Log', 'History', 'Graphs']
 
@@ -36,6 +38,15 @@ export default function ExerciseDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const { startRestTimer } = useTimer()
+  const [params] = useSearchParams()
+
+  // ?date=YYYY-MM-DD edits a past day. `date` goes on every set-level
+  // call; leaving it undefined for today keeps the server on its rolling
+  // window instead of pinning a live session to a calendar date.
+  const dayKey     = params.get('date') || toDayKey(new Date())
+  const isTodayKey = isToday(dayKey)
+  const date       = isTodayKey ? undefined : dayKeyToNoon(dayKey)
+  const backHref   = isTodayKey ? '/log' : `/log?date=${dayKey}`
 
   const [bodyPart,  setBodyPart]  = useState(location.state?.bodyPart || '')
   const [notes,     setNotes]     = useState('')
@@ -70,7 +81,7 @@ export default function ExerciseDetail() {
     const load = async () => {
       try {
         const [todayRes, historyRes] = await Promise.all([
-          getTodayWorkout(),
+          isTodayKey ? getTodayWorkout() : getWorkoutForDay(dayKeyToNoon(dayKey)),
           getExerciseHistory(name),
         ])
 
@@ -100,11 +111,11 @@ export default function ExerciseDetail() {
       }
     }
     load()
-  }, [name])
+  }, [name, dayKey, isTodayKey])
 
   useEffect(() => {
-    if (notFound) navigate('/log', { replace: true })
-  }, [notFound, navigate])
+    if (notFound) navigate(backHref, { replace: true })
+  }, [notFound, navigate, backHref])
 
   // land directly on the deep-linked tab (e.g. Graphs, from Progress's
   // PR list) once the panels have actually rendered — setting activeTab
@@ -151,7 +162,7 @@ export default function ExerciseDetail() {
   const handleNotesBlur = async () => {
     if (sets.length === 0) return
     try {
-      await updateExerciseNotes({ exerciseName: name, notes })
+      await updateExerciseNotes({ exerciseName: name, notes, date })
     } catch {
       setError('Failed to save note — try again')
     }
@@ -165,12 +176,12 @@ export default function ExerciseDetail() {
     try {
       if (selectedSetId) {
         const set = sets.find(s => s.id === selectedSetId)
-        await updateSetInToday(set.originalId, { exerciseName: name, reps: draftReps, weight: draftWeight })
+        await updateSetInToday(set.originalId, { exerciseName: name, reps: draftReps, weight: draftWeight, date })
         setSets(prev => prev.map(s => s.id === selectedSetId ? { ...s, reps: draftReps, weight: draftWeight } : s))
         setSelectedSetId(null)
       } else {
         const res = await addSetToToday({
-          exerciseName: name, bodyPart, notes,
+          exerciseName: name, bodyPart, notes, date,
           set: { reps: draftReps, weight: draftWeight },
         })
         const savedExercise = res.data.exercises.find(e => e.name === name)
@@ -199,7 +210,7 @@ export default function ExerciseDetail() {
     if (!set) return
     setError('')
     try {
-      await deleteSetFromToday(set.originalId, name)
+      await deleteSetFromToday(set.originalId, name, date)
       setSets(prev => prev.filter(s => s.id !== set.id))
       setSelectedSetId(null); setDraftWeight(''); setDraftReps('')
       const historyRes = await getExerciseHistory(name)
@@ -212,8 +223,8 @@ export default function ExerciseDetail() {
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState(false)
   const handleDeleteExercise = async () => {
     try {
-      if (sets.length > 0) await deleteExerciseFromToday(name)
-      navigate('/log')
+      if (sets.length > 0) await deleteExerciseFromToday(name, date)
+      navigate(backHref)
     } catch {
       setError('Failed to delete exercise — try again')
     }
@@ -276,7 +287,7 @@ export default function ExerciseDetail() {
     <AppLayout>
       {/* Header */}
       <div className="flex items-start gap-3 px-4 pt-10 pb-3">
-        <button onClick={() => navigate('/log')} className="text-gray-400 active:text-white p-1 -m-1 mt-0.5">
+        <button onClick={() => navigate(backHref)} className="text-gray-400 active:text-white p-1 -m-1 mt-0.5">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6"/>
@@ -284,7 +295,18 @@ export default function ExerciseDetail() {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-display text-lg font-bold text-white truncate">{name}</h1>
-          <span className="text-xs text-gray-400">{bodyPart}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-400">{bodyPart}</span>
+            {/* you're editing a day that isn't today — say so, loudly
+                enough that sets don't get logged against the wrong date */}
+            {!isTodayKey && (
+              <span className="text-[10px] font-bold uppercase tracking-wide
+                               px-1.5 py-0.5 rounded-full border
+                               bg-red-900/30 text-red-300 border-red-900">
+                {formatDayKey(dayKey)}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-1 items-center">
           <button

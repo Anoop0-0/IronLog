@@ -49,11 +49,13 @@ export default function Dashboard() {
     }
   }
 
-  const handlePickDay = (key) => {
+  const handlePickDay = (key, hasWorkout) => {
     setCalendarOpen(false)
     // today's session lives on this screen, so a tap on it just closes
     if (today && toDayKey(today.createdAt) === key) return
-    navigate(`/history?date=${key}`)
+    // a day with something logged opens for viewing; an empty one opens
+    // the logger for that date, which is the point of picking it
+    navigate(hasWorkout ? `/history?date=${key}` : `/log?date=${key}`)
   }
 
   return (

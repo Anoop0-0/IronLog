@@ -5,6 +5,9 @@ import {
   groupByDay,
   buildMonthGrid,
   TODAY_WINDOW_MS,
+  dayKeyToNoon,
+  isToday,
+  formatDayKey,
 } from './workoutDays'
 
 const workout = (createdAt, _id = createdAt) => ({ _id, createdAt, exercises: [] })
@@ -94,5 +97,40 @@ describe('buildMonthGrid', () => {
 
   it('accounts for leap years', () => {
     expect(buildMonthGrid(2028, 1).filter(Boolean)).toHaveLength(29)
+  })
+})
+
+describe('dayKeyToNoon', () => {
+  it('lands on local noon of that day, not UTC midnight', () => {
+    const iso = dayKeyToNoon('2026-09-08')
+    const d = new Date(iso)
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(8)
+    expect(d.getDate()).toBe(8)
+    expect(d.getHours()).toBe(12)
+  })
+
+  it('round-trips through toDayKey for every month boundary', () => {
+    ;['2026-01-01', '2026-02-28', '2026-03-01', '2026-12-31'].forEach(key => {
+      expect(toDayKey(dayKeyToNoon(key))).toBe(key)
+    })
+  })
+
+  it('stays on the right day across a DST changeover', () => {
+    // US DST springs forward on 2026-03-08; noon is unaffected either side
+    ;['2026-03-07', '2026-03-08', '2026-03-09'].forEach(key => {
+      expect(toDayKey(dayKeyToNoon(key))).toBe(key)
+    })
+  })
+})
+
+describe('isToday / formatDayKey', () => {
+  it('recognises today', () => {
+    expect(isToday(toDayKey(new Date()))).toBe(true)
+    expect(isToday('2020-01-01')).toBe(false)
+  })
+
+  it('formats from local parts, so the day never shifts', () => {
+    expect(formatDayKey('2026-09-08')).toContain('Sep 8')
   })
 })

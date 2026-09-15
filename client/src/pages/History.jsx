@@ -59,12 +59,16 @@ export default function History() {
     }
   }
 
-  const handlePickDay = (key) => {
+  const handlePickDay = (key, hasWorkout) => {
     setCalendarOpen(false)
     // the active session isn't in this list — send those taps home,
     // where that workout actually lives
     if (active && toDayKey(active.createdAt) === key && !byDay[key]) {
       navigate('/dashboard')
+      return
+    }
+    if (!hasWorkout) {
+      navigate(`/log?date=${key}`)
       return
     }
     setParams({ date: key })
@@ -156,9 +160,19 @@ export default function History() {
                   focusedDay && focusedDay !== key ? 'opacity-40' : ''
                 } transition-opacity`}
               >
-                <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
-                  {dayLabel(key)}
-                </h2>
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {dayLabel(key)}
+                  </h2>
+                  {/* the inline editor below can fix existing sets, but
+                      adding an exercise needs the picker and stepper */}
+                  <button
+                    onClick={() => navigate(`/log?date=${key}`)}
+                    className="text-xs text-red-400 font-medium active:text-red-300 transition-colors"
+                  >
+                    + Add exercise
+                  </button>
+                </div>
                 <div className="space-y-3">
                   {byDay[key].map(w => (
                     <WorkoutCard
