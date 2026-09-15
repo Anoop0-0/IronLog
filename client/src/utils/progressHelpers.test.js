@@ -11,6 +11,7 @@ import {
   getEstimated1RM,
   getBestWeightByReps,
   getSessionTrend,
+  PROGRESS_GRAPHS,
 } from './progressHelpers'
 
 const workout = (createdAt, exercises) => ({ createdAt, exercises })
@@ -273,5 +274,44 @@ describe('getSessionTrend', () => {
       ]),
     ]
     expect(getSessionTrend(workouts, 'reps')[0].value).toBe(13)
+  })
+})
+
+describe('PROGRESS_GRAPHS', () => {
+  it('only offers metrics that still mean something summed across every exercise', () => {
+    expect(PROGRESS_GRAPHS.map(g => g.id)).toEqual(['volume', 'reps', 'sets'])
+  })
+
+  it('every id is a metric getSessionTrend understands', () => {
+    const workouts = [
+      workout('2026-01-01T10:00:00.000Z', [
+        exercise('Bench Press', 'Chest', [{ reps: 5, weight: 100 }]),
+      ]),
+    ]
+    PROGRESS_GRAPHS.forEach(g => {
+      const [point] = getSessionTrend(workouts, g.id)
+      expect(Number.isFinite(point.value)).toBe(true)
+    })
+  })
+})
+
+describe('getSessionTrend — sets metric', () => {
+  it('counts sets, independent of how heavy or long they were', () => {
+    const workouts = [
+      workout('2026-01-01T10:00:00.000Z', [
+        exercise('Bench Press', 'Chest', [{ reps: 5, weight: 100 }, { reps: 8, weight: 90 }]),
+        exercise('Squat', 'Legs', [{ reps: 10, weight: 120 }]),
+      ]),
+    ]
+    expect(getSessionTrend(workouts, 'sets')[0].value).toBe(3)
+  })
+
+  it('is not rounded like volume — a set count is already an integer', () => {
+    const workouts = [
+      workout('2026-01-01T10:00:00.000Z', [
+        exercise('Curl', 'Arms', [{ reps: 12, weight: 12.5 }]),
+      ]),
+    ]
+    expect(getSessionTrend(workouts, 'sets')[0].value).toBe(1)
   })
 })
