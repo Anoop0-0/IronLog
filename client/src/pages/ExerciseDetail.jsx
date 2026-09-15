@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import Stepper         from '../components/workout/Stepper'
 import TrendAreaChart  from '../components/charts/TrendAreaChart'
+import MultiLineChart  from '../components/charts/MultiLineChart'
 import {
   getTodayWorkout, addSetToToday, updateSetInToday, deleteSetFromToday,
   updateExerciseNotes, deleteExerciseFromToday, getExerciseHistory,
@@ -11,6 +12,9 @@ import {
   getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
   filterByDays, TIMELINE_RANGES,
 } from '../utils/progressHelpers'
+import {
+  EXERCISE_GRAPHS, DEFAULT_GRAPH_ID, getExerciseGraphData,
+} from '../utils/exerciseGraphs'
 import { useTimer } from '../hooks/useTimer'
 import { AchievementBadge, AchievementBanner } from '../components/workout/Achievement'
 import { vibrate, ACHIEVEMENT } from '../utils/haptics'
@@ -24,9 +28,6 @@ const relativeDate = (iso) => {
   if (diff === 1) return 'Yesterday'
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
-
-const shortDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export default function ExerciseDetail() {
   const { exerciseName } = useParams()
@@ -62,6 +63,7 @@ export default function ExerciseDetail() {
   // than 30 days, and landing on an empty "Nothing in range" screen
   // right after that tap would be a bad first impression
   const [range, setRange] = useState(TIMELINE_RANGES[TIMELINE_RANGES.length - 1])
+  const [graphId, setGraphId] = useState(DEFAULT_GRAPH_ID)
 
   useEffect(() => {
     const load = async () => {
@@ -224,10 +226,10 @@ export default function ExerciseDetail() {
     [history, range]
   )
 
-  const trendData = [...rangeHistory].reverse().map(entry => ({
-    label: shortDate(entry.date),
-    value: Math.max(...entry.sets.map(s => s.weight)),
-  }))
+  const graph = useMemo(
+    () => getExerciseGraphData(rangeHistory, graphId),
+    [rangeHistory, graphId]
+  )
   const personalBest    = rangeHistory.length
     ? Math.max(...rangeHistory.flatMap(e => e.sets.map(s => s.weight)))
     : null
@@ -451,6 +453,35 @@ export default function ExerciseDetail() {
             </div>
           ) : (
             <>
+              {/* Graph type */}
+              <div className="mb-3">
+                <label className="block text-[10px] font-medium text-gray-500 uppercase
+                                  tracking-wider mb-1.5">
+                  Graph
+                </label>
+                <div className="relative">
+                  <select
+                    value={graphId}
+                    onChange={e => setGraphId(e.target.value)}
+                    className="w-full appearance-none bg-gray-900 border border-gray-800
+                               rounded-lg pl-3 pr-9 py-2.5 text-sm text-white
+                               outline-none focus:border-red-700"
+                  >
+                    {EXERCISE_GRAPHS.map(g => (
+                      <option key={g.id} value={g.id}>{g.label}</option>
+                    ))}
+                  </select>
+                  <svg
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </div>
+              </div>
+
               {/* Timeline range — same filter as the Progress page */}
               <div className="flex gap-2 mb-4">
                 {TIMELINE_RANGES.map(r => (
@@ -500,8 +531,16 @@ export default function ExerciseDetail() {
                   </div>
 
                   <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-                    <p className="text-sm font-semibold text-white mb-2">Weight trend</p>
-                    <TrendAreaChart data={trendData} valueSuffix="kg" />
+                    <p className="text-sm font-semibold text-white mb-2">{graph.label}</p>
+                    {graph.kind === 'multi' ? (
+                      <MultiLineChart
+                        data={graph.data}
+                        keys={graph.keys}
+                        valueSuffix={graph.suffix}
+                      />
+                    ) : (
+                      <TrendAreaChart data={graph.data} valueSuffix={graph.suffix} />
+                    )}
                   </div>
                 </>
               )}

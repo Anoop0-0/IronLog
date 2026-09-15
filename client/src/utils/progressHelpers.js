@@ -195,20 +195,33 @@ export const getBestWeightByReps = (history) => {
 }
 
 // ── account-wide session trend (for the Progress page) ──────────────
+// Only the metrics that still mean something once every exercise is
+// summed together. Deliberately NOT the full per-exercise graph menu
+// (see utils/exerciseGraphs.js): a single "max weight" line across all
+// exercises would jump between your deadlift and your curls, and a
+// "1RM" blended across unrelated lifts has no interpretation at all.
+export const PROGRESS_GRAPHS = [
+  { id: 'volume', label: 'Workout Volume', suffix: 'kg',    totalLabel: 'kg total' },
+  { id: 'reps',   label: 'Workout Reps',   suffix: ' reps', totalLabel: 'reps total' },
+  { id: 'sets',   label: 'Workout Sets',   suffix: ' sets', totalLabel: 'sets total' },
+]
+
 // one point per workout session (not bucketed by week) so the timeline
 // filter (1M/3M/6M/1Y/All) controls the resolution directly; metric is
-// 'volume' or 'reps'
+// one of PROGRESS_GRAPHS' ids
 export const getSessionTrend = (workouts, metric) => {
   const sessions = workouts.map(w => {
     let value = 0
     w.exercises.forEach(ex => ex.sets.forEach(s => {
       const reps   = parseFloat(s.reps)   || 0
       const weight = parseFloat(s.weight) || 0
-      value += metric === 'reps' ? reps : reps * weight
+      if (metric === 'reps')      value += reps
+      else if (metric === 'sets') value += 1
+      else                        value += reps * weight
     }))
     return {
       label: new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: metric === 'reps' ? value : Math.round(value),
+      value: metric === 'volume' ? Math.round(value) : value,
       timestamp: new Date(w.createdAt).getTime(),
     }
   })

@@ -9,6 +9,7 @@ import {
   filterByDays,
   getSessionTrend,
   TIMELINE_RANGES,
+  PROGRESS_GRAPHS,
 } from '../utils/progressHelpers'
 import { BODY_PARTS } from '../utils/exerciseList'
 import { navigateToExerciseGraphs } from '../utils/exerciseNav'
@@ -18,7 +19,9 @@ export default function Progress() {
   const navigate = useNavigate()
   const [bodyFilter, setBodyFilter] = useState('All')
   const [range,      setRange]      = useState(TIMELINE_RANGES[0])
-  const [metric,     setMetric]     = useState('volume') // 'volume' | 'reps'
+  const [metric,     setMetric]     = useState(PROGRESS_GRAPHS[0].id)
+
+  const activeGraph = PROGRESS_GRAPHS.find(g => g.id === metric) || PROGRESS_GRAPHS[0]
 
   const rangeWorkouts = useMemo(
     () => filterByDays(workouts, range.days),
@@ -77,31 +80,39 @@ export default function Progress() {
           {/* Trend chart section */}
           <div className="px-4 mb-6">
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex bg-gray-800 rounded-lg p-0.5">
-                  {['volume', 'reps'].map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setMetric(m)}
-                      className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors
-                                  ${metric === m ? 'bg-red-600 text-white' : 'text-gray-400'}`}
-                    >
-                      {m}
-                    </button>
-                  ))}
+              <div className="flex justify-between items-start gap-3 mb-4">
+                <div className="relative flex-1 min-w-0">
+                  <select
+                    value={metric}
+                    onChange={e => setMetric(e.target.value)}
+                    aria-label="Graph type"
+                    className="w-full appearance-none bg-gray-800 border border-gray-700
+                               rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-white
+                               outline-none focus:border-red-700"
+                  >
+                    {PROGRESS_GRAPHS.map(g => (
+                      <option key={g.id} value={g.id}>{g.label}</option>
+                    ))}
+                  </select>
+                  <svg
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
+                    width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#777"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-lg font-bold text-red-400">
                     {periodTotal.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {metric === 'volume' ? 'kg total' : 'reps total'}
-                  </p>
+                  <p className="text-xs text-gray-400">{activeGraph.totalLabel}</p>
                 </div>
               </div>
               <TrendAreaChart
                 data={trend.map(t => ({ label: t.label, value: t.value }))}
-                valueSuffix={metric === 'volume' ? 'kg' : ' reps'}
+                valueSuffix={activeGraph.suffix}
               />
             </div>
           </div>
