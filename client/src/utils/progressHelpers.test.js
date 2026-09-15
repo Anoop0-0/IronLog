@@ -346,6 +346,21 @@ describe('badge assignment', () => {
     expect(shownFor(history).map(r => r.shown)).toEqual([['reps'], ['weight'], []])
   })
 
+  it('badges from the sets, not the stored flags — wiped data still works', () => {
+    // the reported bug: saving a workout through the bulk edit endpoint
+    // stripped every achievement, so no set carried a 'weight' flag and
+    // the heaviest lift fell through to the rep rule, showing REP PR on
+    // both sets and PR on neither
+    const history = [hEntry('2026-01-01', [
+      { _id: 'a', reps: 10, weight: 50, achievements: [] },
+      { _id: 'b', reps: 6,  weight: 65, achievements: [] },
+      { _id: 'c', reps: 7,  weight: 50, achievements: [] },
+    ])]
+    const records = getBadgeAssignment(history)
+    expect(history[0].sets.map(x => standingAchievements(x, records)))
+      .toEqual([['reps'], ['weight'], []])
+  })
+
   it('gives one set at most one badge — never PR and REP PR together', () => {
     // 65x6 is both the heaviest lift and the only set at 65kg
     const history = [hEntry('2026-01-01', [set(6, 65, ['weight'])])]
@@ -367,7 +382,7 @@ describe('badge assignment', () => {
   it('picks the earliest tie across sessions, not the latest', () => {
     const history = [
       hEntry('2026-01-08', [set(10, 50)]),   // newest first, as the API returns
-      hEntry('2026-01-01', [set(10, 50)]),
+      hEntry('2026-01-01', [set(10, 50), set(3, 90)]),  // 90kg keeps 50 off the max
     ]
     const records = getBadgeAssignment(history)
     expect(standingAchievements(history[1].sets[0], records)).toEqual(['reps'])
@@ -385,15 +400,21 @@ describe('badge assignment', () => {
 
   it('moves the rep badge when more reps are done at that weight', () => {
     const history = [hEntry('2026-01-01', [
-      set(3, 80), set(5, 80), set(8, 80),
+      set(3, 80), set(5, 80), set(8, 80), set(1, 120),  // 120kg takes the PR
     ])]
-    expect(shownFor(history).map(r => r.shown)).toEqual([[], [], ['reps']])
+    expect(shownFor(history).map(r => r.shown))
+      .toEqual([[], [], ['reps'], ['weight']])
   })
 
   it('handles a just-edited set whose numbers are strings', () => {
-    const history = [hEntry('2026-01-01', [{ _id: 'x', reps: '5', weight: '80', achievements: [] }])]
-    expect(standingAchievements(history[0].sets[0], getBadgeAssignment(history)))
-      .toEqual(['reps'])
+    const history = [hEntry('2026-01-01', [
+      { _id: 'x', reps: '5', weight: '80', achievements: [] },
+      { _id: 'y', reps: '3', weight: '60', achievements: [] },
+    ])]
+    const records = getBadgeAssignment(history)
+    // '80' must compare as 80, or neither badge lands
+    expect(standingAchievements(history[0].sets[0], records)).toEqual(['weight'])
+    expect(standingAchievements(history[0].sets[1], records)).toEqual(['reps'])
   })
 
   it('survives empty history', () => {
@@ -411,12 +432,14 @@ describe('badge assignment', () => {
 
 describe('getStandingRecordSets', () => {
   it('claims the rep record for a lone set at a weight', () => {
-    const history = [hEntry('2026-01-01', [set(5, 80)])]
+    // 120kg holds the weight badge, so the 80kg set is judged on reps —
+    // and a single attempt still counts as the best at that weight
+    const history = [hEntry('2026-01-01', [set(5, 80), set(1, 120)])]
     expect(getStandingRecordSets(history).holdsRepsRecord(80, 5)).toBe(true)
   })
 
   it('drops the claim once more reps are done at that weight', () => {
-    const history = [hEntry('2026-01-01', [set(5, 80), set(8, 80)])]
+    const history = [hEntry('2026-01-01', [set(5, 80), set(8, 80), set(1, 120)])]
     const r = getStandingRecordSets(history)
     expect(r.holdsRepsRecord(80, 5)).toBe(false)
     expect(r.holdsRepsRecord(80, 8)).toBe(true)
