@@ -12,6 +12,8 @@ import {
   getBestWeightByReps,
   getSessionTrend,
   PROGRESS_GRAPHS,
+  getStandingRecords,
+  standingAchievements,
 } from './progressHelpers'
 
 const workout = (createdAt, exercises) => ({ createdAt, exercises })
@@ -313,5 +315,75 @@ describe('getSessionTrend — sets metric', () => {
       ]),
     ]
     expect(getSessionTrend(workouts, 'sets')[0].value).toBe(1)
+  })
+})
+
+// ── standing records ────────────────────────────────────────────────
+const hEntry = (date, sets) => ({ date, sets })
+const set = (reps, weight, achievements = []) => ({ reps, weight, achievements })
+
+describe('getStandingRecords / standingAchievements', () => {
+  // the sequence from the bug report: 2.5x1 (PR), 2.5x3 (REP PR),
+  // 5x3 (PR), 5x3 (nothing), 12.5x12 (PR)
+  const history = [
+    hEntry('2026-01-01', [
+      set(1, 2.5, ['weight']),
+      set(3, 2.5, ['reps']),
+      set(3, 5,   ['weight']),
+      set(3, 5),
+      set(12, 12.5, ['weight']),
+    ]),
+  ]
+  const standing = getStandingRecords(history)
+  const shown = s => standingAchievements(s, standing)
+
+  it('keeps the weight badge only on the set that is still the heaviest', () => {
+    expect(shown(set(12, 12.5, ['weight']))).toEqual(['weight'])
+  })
+
+  it('drops the weight badge from sets a heavier lift has since beaten', () => {
+    expect(shown(set(1, 2.5, ['weight']))).toEqual([])
+    expect(shown(set(3, 5,   ['weight']))).toEqual([])
+  })
+
+  it('keeps a rep badge that is still the most reps at that weight', () => {
+    expect(shown(set(3, 2.5, ['reps']))).toEqual(['reps'])
+  })
+
+  it('drops a rep badge once more reps are done at the same weight', () => {
+    const later = [hEntry('2026-01-08', [
+      set(3, 2.5, ['reps']),
+      set(5, 2.5, ['reps']),   // new rep record at 2.5kg
+    ])]
+    const st = getStandingRecords(later)
+    expect(standingAchievements(set(3, 2.5, ['reps']), st)).toEqual([])
+    expect(standingAchievements(set(5, 2.5, ['reps']), st)).toEqual(['reps'])
+  })
+
+  it('a later set merely MATCHING the record does not steal the badge', () => {
+    // equal reps at equal weight earns nothing, so the original holder keeps it
+    const tied = [hEntry('2026-01-08', [set(3, 5, ['weight']), set(3, 5)])]
+    const st = getStandingRecords(tied)
+    expect(standingAchievements(set(3, 5, ['weight']), st)).toEqual(['weight'])
+  })
+
+  it('handles a just-edited set whose numbers are still strings', () => {
+    const st = getStandingRecords([hEntry('2026-01-01', [set(3, 5, ['weight'])])])
+    expect(standingAchievements({ reps: '3', weight: '5', achievements: ['weight'] }, st))
+      .toEqual(['weight'])
+  })
+
+  it('returns nothing for a set that never earned anything', () => {
+    expect(shown(set(3, 5))).toEqual([])
+  })
+
+  it('survives empty history without throwing', () => {
+    const st = getStandingRecords([])
+    expect(st.maxWeight).toBeNull()
+    expect(standingAchievements(set(3, 5, ['weight']), st)).toEqual([])
+  })
+
+  it('leaves an unrecognised future badge kind visible rather than hiding it', () => {
+    expect(shown(set(3, 5, ['streak']))).toEqual(['streak'])
   })
 })

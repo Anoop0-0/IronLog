@@ -11,6 +11,7 @@ import {
 import {
   getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
   filterByDays, TIMELINE_RANGES,
+  getStandingRecords, standingAchievements,
 } from '../utils/progressHelpers'
 import {
   EXERCISE_GRAPHS, DEFAULT_GRAPH_ID, getExerciseGraphData,
@@ -230,6 +231,11 @@ export default function ExerciseDetail() {
     () => getExerciseGraphData(rangeHistory, graphId),
     [rangeHistory, graphId]
   )
+
+  // deliberately off the unfiltered history: a badge claims "this is the
+  // record", so narrowing the timeline must not promote an old set into
+  // one it doesn't actually hold
+  const standing = useMemo(() => getStandingRecords(history), [history])
   const personalBest    = rangeHistory.length
     ? Math.max(...rangeHistory.flatMap(e => e.sets.map(s => s.weight)))
     : null
@@ -407,7 +413,7 @@ export default function ExerciseDetail() {
                       wraps rather than overflowing when a set is both a
                       weight and a rep record */}
                   <span className="w-20 shrink-0 flex flex-wrap justify-end gap-1">
-                    {(set.achievements || []).map(kind => (
+                    {standingAchievements(set, standing).map(kind => (
                       <AchievementBadge key={kind} kind={kind} />
                     ))}
                   </span>
@@ -438,7 +444,7 @@ export default function ExerciseDetail() {
                       <Fragment key={si}>
                         <span className="text-gray-500">Set {si + 1}</span>
                         <span className="flex items-center justify-end gap-1.5">
-                          {(s.achievements || []).map(kind => (
+                          {standingAchievements(s, standing).map(kind => (
                             <AchievementBadge key={kind} kind={kind} />
                           ))}
                         </span>
