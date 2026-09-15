@@ -1,8 +1,9 @@
 import { useState, useEffect, Fragment } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout       from '../components/layout/AppLayout'
 import ExercisePicker  from '../components/workout/ExercisePicker'
-import { getTodayWorkout } from '../api/workouts.api'
+import { getTodayWorkout, getWorkoutForDay } from '../api/workouts.api'
+import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
 
 export default function WorkoutLogger() {
   const [exercises, setExercises] = useState([])
@@ -10,38 +11,55 @@ export default function WorkoutLogger() {
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState('')
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+
+  // ?date=YYYY-MM-DD logs against a past day; absent means today, which
+  // keeps the server on its rolling-24h window rather than pinning the
+  // session to a calendar date mid-workout
+  const dayKey    = params.get('date') || toDayKey(new Date())
+  const isTodayKey = isToday(dayKey)
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true)
       try {
-        const res = await getTodayWorkout()
-        const todayWorkout = res.data
-        setExercises(todayWorkout ? todayWorkout.exercises : [])
+        const res = isTodayKey
+          ? await getTodayWorkout()
+          : await getWorkoutForDay(dayKeyToNoon(dayKey))
+        setExercises(res.data ? res.data.exercises : [])
       } catch {
-        setError('Failed to load today\'s workout')
+        setError('Failed to load that day\'s workout')
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [])
+  }, [dayKey, isTodayKey])
 
   // a brand-new exercise (not in today's workout yet) needs its bodyPart
   // carried along so the detail screen can log a first set for it —
   // ExerciseDetail falls back to this via location.state
+  const exerciseHref = (name) =>
+    `/log/${encodeURIComponent(name)}${isTodayKey ? '' : `?date=${dayKey}`}`
+
   const handleAddExercise = (name, bodyPart) => {
-    navigate(`/log/${encodeURIComponent(name)}`, { state: { bodyPart } })
+    navigate(exerciseHref(name), { state: { bodyPart } })
   }
 
   return (
     <AppLayout>
       <div className="px-4 pt-10 pb-4">
         <h1 className="font-display text-xl font-bold text-white">Log workout</h1>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {new Date().toLocaleDateString('en-US', {
-            weekday: 'long', month: 'short', day: 'numeric'
-          })}
-        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-xs text-gray-400">{formatDayKey(dayKey)}</p>
+          {!isTodayKey && (
+            <span className="text-[10px] font-bold uppercase tracking-wide
+                             px-1.5 py-0.5 rounded-full border
+                             bg-red-900/30 text-red-300 border-red-900">
+              past day
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="px-4 space-y-3">
@@ -91,7 +109,7 @@ export default function WorkoutLogger() {
           return (
             <button
               key={ex.name}
-              onClick={() => navigate(`/log/${encodeURIComponent(ex.name)}`)}
+              onClick={() => navigate(exerciseHref(ex.name))}
               className="w-full bg-gray-900 border border-gray-800 rounded-xl
                          px-4 py-3.5 text-left block
                          active:border-gray-700 transition-colors"

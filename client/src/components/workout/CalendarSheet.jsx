@@ -54,8 +54,8 @@ export default function CalendarSheet({ workouts, onPick, onClose }) {
             <h2 className="font-semibold text-white">Jump to a day</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {monthCount === 0
-                ? 'No workouts this month'
-                : `${monthCount} workout${monthCount === 1 ? '' : 's'} this month`}
+                ? 'Tap a day to log a workout on it'
+                : `${monthCount} workout${monthCount === 1 ? '' : 's'} · tap any day to log`}
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 text-sm px-2 py-1">
@@ -117,15 +117,15 @@ export default function CalendarSheet({ workouts, onPick, onClose }) {
             return (
               <button
                 key={cell.key}
-                onClick={() => hasWorkout && onPick(cell.key)}
-                disabled={!hasWorkout}
+                onClick={() => !isFuture && onPick(cell.key, hasWorkout)}
+                disabled={isFuture}
                 className={`aspect-square rounded-lg flex flex-col items-center justify-center
                             gap-0.5 text-sm transition-colors
                             ${hasWorkout
                               ? 'bg-gray-800 text-white active:bg-red-900/40'
                               : isFuture
                               ? 'text-gray-700'
-                              : 'text-gray-600'}
+                              : 'text-gray-400 active:bg-gray-800'}
                             ${isToday ? 'ring-1 ring-red-500' : ''}`}
               >
                 <span className={isToday ? 'text-red-400 font-semibold' : ''}>
