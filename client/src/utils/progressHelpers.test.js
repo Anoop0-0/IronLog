@@ -14,6 +14,7 @@ import {
   PROGRESS_GRAPHS,
   getStandingRecords,
   standingAchievements,
+  getStandingRecordSets,
 } from './progressHelpers'
 
 const workout = (createdAt, exercises) => ({ createdAt, exercises })
@@ -385,5 +386,68 @@ describe('getStandingRecords / standingAchievements', () => {
 
   it('leaves an unrecognised future badge kind visible rather than hiding it', () => {
     expect(shown(set(3, 5, ['streak']))).toEqual(['streak'])
+  })
+})
+
+describe('getStandingRecordSets', () => {
+  it('will not claim a rep record the server never awarded', () => {
+    // one lone set at 80kg: trivially "the most reps at 80kg", but there
+    // was no prior attempt to beat, so no badge was ever earned. An
+    // aggregate card must not invent one.
+    const history = [hEntry('2026-01-01', [set(5, 80)])]
+    const r = getStandingRecordSets(history)
+    expect(r.holdsRepsRecord(80, 5)).toBe(false)
+  })
+
+  it('claims a rep record that was earned and still stands', () => {
+    const history = [hEntry('2026-01-01', [set(3, 80), set(5, 80, ['reps'])])]
+    const r = getStandingRecordSets(history)
+    expect(r.holdsRepsRecord(80, 5)).toBe(true)
+    expect(r.holdsRepsRecord(80, 3)).toBe(false)
+  })
+
+  it('drops the claim once the rep record is beaten', () => {
+    const history = [hEntry('2026-01-01', [
+      set(3, 80), set(5, 80, ['reps']), set(8, 80, ['reps']),
+    ])]
+    const r = getStandingRecordSets(history)
+    expect(r.holdsRepsRecord(80, 5)).toBe(false)
+    expect(r.holdsRepsRecord(80, 8)).toBe(true)
+  })
+
+  it('claims the weight record only for the heaviest lift', () => {
+    const history = [hEntry('2026-01-01', [
+      set(5, 80, ['weight']), set(3, 120, ['weight']),
+    ])]
+    const r = getStandingRecordSets(history)
+    expect(r.holdsWeightRecord(120)).toBe(true)
+    expect(r.holdsWeightRecord(80)).toBe(false)     // beaten
+  })
+
+  it('can match a weight record on rep count too, for by-reps rows', () => {
+    const history = [hEntry('2026-01-01', [set(3, 120, ['weight'])])]
+    const r = getStandingRecordSets(history)
+    expect(r.holdsWeightRecord(120, 3)).toBe(true)
+    expect(r.holdsWeightRecord(120, 5)).toBe(false) // different rep count
+  })
+
+  it('never disagrees with what the set lists render', () => {
+    const history = [hEntry('2026-01-01', [
+      set(1, 2.5, ['weight']), set(3, 2.5, ['reps']),
+      set(3, 5, ['weight']), set(12, 12.5, ['weight']),
+    ])]
+    const standing = getStandingRecords(history)
+    const r = getStandingRecordSets(history)
+    history[0].sets.forEach(s => {
+      const onList = standingAchievements(s, standing)
+      expect(r.holdsWeightRecord(s.weight, s.reps)).toBe(onList.includes('weight'))
+      expect(r.holdsRepsRecord(s.weight, s.reps)).toBe(onList.includes('reps'))
+    })
+  })
+
+  it('survives empty history', () => {
+    const r = getStandingRecordSets([])
+    expect(r.holdsWeightRecord(100)).toBe(false)
+    expect(r.holdsRepsRecord(100, 5)).toBe(false)
   })
 })

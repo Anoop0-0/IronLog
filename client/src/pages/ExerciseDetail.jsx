@@ -11,7 +11,7 @@ import {
 import {
   getMaxRepsSet, getBestSessionVolume, getEstimated1RM, getBestWeightByReps,
   filterByDays, TIMELINE_RANGES,
-  getStandingRecords, standingAchievements,
+  getStandingRecords, standingAchievements, getStandingRecordSets,
 } from '../utils/progressHelpers'
 import {
   EXERCISE_GRAPHS, DEFAULT_GRAPH_ID, getExerciseGraphData,
@@ -236,6 +236,11 @@ export default function ExerciseDetail() {
   // record", so narrowing the timeline must not promote an old set into
   // one it doesn't actually hold
   const standing = useMemo(() => getStandingRecords(history), [history])
+
+  // aggregate surfaces on the Graphs tab match against the sets that
+  // actually hold a badge, so they can never badge something the Log and
+  // History lists leave unbadged
+  const records = useMemo(() => getStandingRecordSets(history), [history])
   const personalBest    = rangeHistory.length
     ? Math.max(...rangeHistory.flatMap(e => e.sets.map(s => s.weight)))
     : null
@@ -243,6 +248,16 @@ export default function ExerciseDetail() {
   const bestSessionVolume = getBestSessionVolume(rangeHistory)
   const estimated1RM     = getEstimated1RM(rangeHistory)
   const weightByReps     = getBestWeightByReps(rangeHistory)
+
+  // Badges here mean what they mean on a set row: "this is the record".
+  // The stats above come from the RANGE-filtered history, so under a 1M
+  // filter the best-in-range is often not the all-time record — these
+  // resolve to an actual badge-holding set, which settles both that and
+  // whether the record was ever really earned.
+  const holdsWeightRecord = records.holdsWeightRecord(personalBest)
+
+  const holdsRepsRecord =
+    !!maxRepsSet && records.holdsRepsRecord(maxRepsSet.weight, maxRepsSet.reps)
 
   if (loading) {
     return (
@@ -525,11 +540,24 @@ export default function ExerciseDetail() {
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
                       <p className="text-xs text-gray-400">Personal best</p>
                       <p className="text-lg font-bold text-red-400">{personalBest}kg</p>
+                      {/* only when the range's best IS the all-time record —
+                          under a 1M filter it often isn't, and a badge here
+                          claims "this is the record" */}
+                      {holdsWeightRecord && (
+                        <span className="inline-block mt-1.5">
+                          <AchievementBadge kind="weight" />
+                        </span>
+                      )}
                     </div>
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
                       <p className="text-xs text-gray-400">Max reps</p>
                       <p className="text-lg font-bold text-red-400">{maxRepsSet.reps}</p>
                       <p className="text-xs text-gray-500 mt-0.5">@ {maxRepsSet.weight}kg</p>
+                      {holdsRepsRecord && (
+                        <span className="inline-block mt-1.5">
+                          <AchievementBadge kind="reps" />
+                        </span>
+                      )}
                     </div>
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
                       <p className="text-xs text-gray-400">Est. 1RM</p>
@@ -564,12 +592,28 @@ export default function ExerciseDetail() {
               {weightByReps.length > 0 && (
                 <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   <p className="text-sm font-semibold text-white px-4 pt-3 pb-2">Best weight by reps</p>
-                  {weightByReps.map(({ reps, weight }) => (
-                    <div key={reps} className="flex justify-between px-4 py-2.5 border-t border-gray-800">
-                      <span className="text-sm text-gray-400">{reps} {reps === 1 ? 'rep' : 'reps'}</span>
-                      <span className="text-sm text-white font-medium">{weight}kg</span>
-                    </div>
-                  ))}
+                  {/* same grid trick as the set lists: one grid for every
+                      row so the badge and weight columns line up */}
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2">
+                    {weightByReps.map(({ reps, weight }) => (
+                      <Fragment key={reps}>
+                        <span className="text-sm text-gray-400 px-4 py-2.5 border-t border-gray-800">
+                          {reps} {reps === 1 ? 'rep' : 'reps'}
+                        </span>
+                        <span className="py-2.5 border-t border-gray-800 flex justify-end">
+                          {/* this rep count is where the all-time heaviest
+                              lift happened, so the row is that record */}
+                          {records.holdsWeightRecord(weight, reps) && (
+                            <AchievementBadge kind="weight" />
+                          )}
+                        </span>
+                        <span className="text-sm text-white font-medium px-4 py-2.5
+                                         border-t border-gray-800 text-right tabular-nums">
+                          {weight}kg
+                        </span>
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
