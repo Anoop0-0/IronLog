@@ -6,7 +6,7 @@ import AppLayout              from '../components/layout/AppLayout'
 import WorkoutCard            from '../components/workout/WorkoutCard'
 import CalendarSheet          from '../components/workout/CalendarSheet'
 import { getActiveSession, toDayKey, formatDayKey } from '../utils/workoutDays'
-import { getBadgeAssignment } from '../utils/progressHelpers'
+import { getBadgeAssignmentsByExercise } from '../utils/progressHelpers'
 
 function SkeletonCard() {
   return (
@@ -61,20 +61,10 @@ export default function Dashboard() {
   // Badges need the full history of each exercise, which every workout in
   // the account already carries — no extra fetch. Built once here rather
   // than per card so stepping between days doesn't recompute it.
-  const badgesByExercise = useMemo(() => {
-    const byName = {}
-    workouts.forEach(w =>
-      w.exercises.forEach(ex => {
-        if (!byName[ex.name]) byName[ex.name] = []
-        byName[ex.name].push({ date: w.createdAt, sets: ex.sets })
-      })
-    )
-    const out = {}
-    Object.entries(byName).forEach(([name, history]) => {
-      out[name] = getBadgeAssignment(history)
-    })
-    return out
-  }, [workouts])
+  const badgesByExercise = useMemo(
+    () => getBadgeAssignmentsByExercise(workouts),
+    [workouts]
+  )
 
   const stepBack = () => {
     const next = pastWorkouts[viewIndex + 1]
