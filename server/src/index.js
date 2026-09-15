@@ -41,7 +41,13 @@ const corsOptions = {
       return callback(null, true)
     }
 
-    callback(new Error('Not allowed by CORS'))
+    // a disallowed origin is a rejected request, not a server fault —
+    // tag it 403 so errorHandler doesn't report it as a 500. Without
+    // this, every blocked origin (and every bot probing the API) shows
+    // up in logs and monitoring as a server error.
+    const err = new Error('Not allowed by CORS')
+    err.status = 403
+    callback(err)
   },
   credentials: true,
 }
