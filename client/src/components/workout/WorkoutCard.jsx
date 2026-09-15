@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 
 const formatDate = (iso) => {
   const d = new Date(iso)
@@ -9,47 +9,52 @@ const formatDate = (iso) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function ExerciseRow({ exercise }) {
-  const [open, setOpen] = useState(false)
+function ExerciseRow({ exercise, defaultExpanded = false }) {
+  const [open, setOpen] = useState(defaultExpanded)
   const { name, sets } = exercise
   if (!sets || sets.length === 0) return null
-  const firstSet      = sets[0]
-  const remainingSets = sets.slice(1)
+
+  const best = sets.reduce((b, s) => (!b || s.weight > b.weight) ? s : b, null)
 
   return (
     <div className="border-t border-gray-800 py-2.5">
-      <div className="flex justify-between items-center">
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="w-full flex justify-between items-center text-left"
+      >
         <div>
           <p className="text-sm text-gray-200 font-medium">{name}</p>
-          <p className="text-xs text-red-400 mt-0.5">
-            Set 1 &nbsp; {firstSet.reps} reps @ {firstSet.weight}kg
-          </p>
+          {/* collapsed summary — a set count and the top weight say more
+              at a glance than singling out set 1 did */}
+          {!open && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              {sets.length} {sets.length === 1 ? 'set' : 'sets'}
+              {best && <> · best <span className="text-red-400">{best.weight}kg</span></>}
+            </p>
+          )}
         </div>
-        {remainingSets.length > 0 && (
-          <button
-            onClick={() => setOpen(prev => !prev)}
-            className="p-1 text-gray-600 active:text-gray-400 transition-colors"
-          >
-            <svg
-              width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round"
-              className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </button>
-        )}
-      </div>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
+          className={`text-gray-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </button>
+
       {open && (
-        <div className="mt-2 space-y-1.5 pl-2">
-          {remainingSets.map((set, i) => (
-            <div key={i} className="flex justify-between">
-              <span className="text-xs text-gray-400">Set {i + 2}</span>
-              <span className="text-xs text-gray-500">
+        // every set rendered identically — set 1 used to be styled as a
+        // headline and the rest as an afterthought, which read as two
+        // different kinds of row once they were all on screen together
+        <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pl-1">
+          {sets.map((set, i) => (
+            <Fragment key={i}>
+              <span className="text-xs text-gray-400">Set {i + 1}</span>
+              <span className="text-xs text-gray-300 text-right tabular-nums">
                 {set.reps} reps @ {set.weight}kg
               </span>
-            </div>
+            </Fragment>
           ))}
         </div>
       )}
@@ -103,7 +108,11 @@ function EditableSetRow({ set, index, onChange, onDelete, showDelete }) {
   )
 }
 
-export default function WorkoutCard({ workout, onDelete, onUpdate }) {
+// expandSets: render every exercise's sets open on mount. The home
+// screen's "Today" card wants that (you're mid-session, you want to see
+// what you've done); the history list leaves them collapsed so a long
+// back-catalogue stays scannable.
+export default function WorkoutCard({ workout, onDelete, onUpdate, expandSets = false }) {
   const { exercises, createdAt } = workout
   const [editing,         setEditing]         = useState(false)
   const [editedExercises, setEditedExercises] = useState([])
@@ -214,7 +223,7 @@ export default function WorkoutCard({ workout, onDelete, onUpdate }) {
       {!editing && (
         <div className="px-4 pb-4">
           {exercises.map((ex, i) => (
-            <ExerciseRow key={i} exercise={ex} />
+            <ExerciseRow key={i} exercise={ex} defaultExpanded={expandSets} />
           ))}
         </div>
       )}
