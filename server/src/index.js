@@ -1,5 +1,6 @@
 import express   from 'express'
 import mongoose  from 'mongoose'
+import { pathToFileURL } from 'url'
 import cors      from 'cors'
 import dotenv    from 'dotenv'
 
@@ -73,14 +74,25 @@ app.get('/api/health', (req, res) => {
 
 app.use(errorHandler)
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected')
-    app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`)
+// Connecting and listening only when this file is what was run keeps
+// `import`ing it side-effect-free, so the smoke test can build the app
+// and hit a route without a database. `npm start` (node src/index.js) is
+// unaffected — that path still takes the branch below.
+const isEntrypoint =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isEntrypoint) {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+      console.log('✅ MongoDB connected')
+      app.listen(PORT, () => {
+        console.log(`✅ Server running on port ${PORT}`)
+      })
     })
-  })
-  .catch(err => {
-    console.error('❌ MongoDB connection failed:', err.message)
-    process.exit(1)
-  })
+    .catch(err => {
+      console.error('❌ MongoDB connection failed:', err.message)
+      process.exit(1)
+    })
+}
+
+export default app
