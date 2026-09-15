@@ -38,8 +38,14 @@ export default function CalendarSheet({ workouts, onPick, onClose }) {
       className="fixed inset-0 bg-black/80 z-[60] flex flex-col justify-end"
       onClick={onClose}
     >
+      {/* max-w-lg mirrors AppLayout's content width — this is position:
+          fixed, so without it the sheet spans the whole viewport and the
+          aspect-square day cells blow up to ~200px on a desktop screen.
+          max-h keeps a tall month (6 rows) scrollable instead of running
+          off the bottom on short viewports. */}
       <div
-        className="bg-gray-900 rounded-t-2xl pb-24"
+        className="bg-gray-900 rounded-t-2xl pb-24 w-full max-w-lg mx-auto
+                   max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

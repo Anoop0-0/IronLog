@@ -76,7 +76,7 @@ export default function Leaderboard({ contest, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col justify-end">
-      <div className="bg-gray-900 rounded-t-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-gray-900 rounded-t-2xl max-h-[90vh] flex flex-col w-full max-w-lg mx-auto">
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-800">

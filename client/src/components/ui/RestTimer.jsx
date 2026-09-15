@@ -266,7 +266,7 @@ export default function RestTimer() {
       {/* Timer sheet */}
       {open && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col justify-end">
-          <div className="bg-gray-900 rounded-t-2xl pb-24">
+          <div className="bg-gray-900 rounded-t-2xl pb-24 w-full max-w-lg mx-auto">
 
             {/* Header */}
             <div className="flex justify-between items-center px-4 pt-4 pb-2">
