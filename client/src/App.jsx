@@ -7,6 +7,7 @@ import Login           from './pages/Login'
 import ForgotPassword  from './pages/ForgotPassword'
 import ResetPassword   from './pages/ResetPassword'
 import Dashboard       from './pages/Dashboard'
+import History         from './pages/History'
 import WorkoutLogger   from './pages/WorkoutLogger'
 import ExerciseDetail  from './pages/ExerciseDetail'
 import Progress        from './pages/Progress'
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/forgot-password"        element={<ForgotPassword />} />
         <Route path="/reset-password/:token"  element={<ResetPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/history"   element={<ProtectedRoute><History /></ProtectedRoute>} />
         <Route path="/log"       element={<ProtectedRoute><WorkoutLogger /></ProtectedRoute>} />
         <Route path="/log/:exerciseName" element={<ProtectedRoute><ExerciseDetail /></ProtectedRoute>} />
         <Route path="/progress"  element={<ProtectedRoute><Progress /></ProtectedRoute>} />
