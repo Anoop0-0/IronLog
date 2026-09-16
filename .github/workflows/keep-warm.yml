@@ -10,6 +10,11 @@ name: Keep API warm
 # service is ever added. 00:00–19:00 UTC is 05:30–00:30 IST, which covers
 # any plausible gym hour and still parks the service overnight.
 #
+# Points at the Singapore service. The API used to run in Oregon while its
+# database sits in Mumbai, so every query crossed the Pacific twice;
+# measured after moving, health went ~0.29-0.76s -> ~0.12-0.29s and a
+# DB-backed route ~0.50-0.56s -> ~0.18-0.35s.
+#
 # GitHub's scheduled runs are best-effort and can be late, so an
 # occasional cold start will still slip through. This makes them rare
 # rather than guaranteed.
@@ -30,7 +35,7 @@ jobs:
           # start, it needs to outlast the restart rather than fail and
           # leave the service asleep for the next real request
           code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 120 \
-            https://ironlog-api-eijv.onrender.com/api/health)
+            https://ironlog-hgm2.onrender.com/api/health)
           echo "HTTP $code"
           cat /tmp/body
           echo
