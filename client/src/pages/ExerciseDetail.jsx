@@ -18,6 +18,7 @@ import {
   EXERCISE_GRAPHS, DEFAULT_GRAPH_ID, getExerciseGraphData,
 } from '../utils/exerciseGraphs'
 import { useTimer } from '../hooks/useTimer'
+import { refreshWorkouts } from '../hooks/useWorkouts'
 import { AchievementBadge, AchievementBanner } from '../components/workout/Achievement'
 import { vibrate, ACHIEVEMENT } from '../utils/haptics'
 import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
@@ -60,6 +61,7 @@ export default function ExerciseDetail() {
   // the record just earned by the set that was saved, if any — cleared on
   // the next save so it always refers to the most recent one
   const [celebration, setCelebration] = useState(null)
+  const [saving,      setSaving]      = useState(false)
 
   const [draftWeight,   setDraftWeight]   = useState('')
   const [draftReps,     setDraftReps]     = useState('')
@@ -170,9 +172,10 @@ export default function ExerciseDetail() {
   }
 
   const handleSaveDraft = async () => {
-    if (!draftWeight || !draftReps) return
+    if (!draftWeight || !draftReps || saving) return
     setError('')
     setCelebration(null)
+    setSaving(true)
 
     try {
       if (selectedSetId) {
@@ -198,11 +201,18 @@ export default function ExerciseDetail() {
         }
         startRestTimer()
       }
-      // this set is now part of "today" in history too
-      const historyRes = await getExerciseHistory(name)
-      setHistory(historyRes.data)
+      // the set is already rendered by this point; these only refresh the
+      // badges here and the cached list the other screens read, so let
+      // them land on their own rather than keeping the button disabled
+      // for another round trip
+      getExerciseHistory(name)
+        .then(historyRes => setHistory(historyRes.data))
+        .catch(() => {})
+      refreshWorkouts()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save set — check your connection and try again')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -216,6 +226,7 @@ export default function ExerciseDetail() {
       setSelectedSetId(null); setDraftWeight(''); setDraftReps('')
       const historyRes = await getExerciseHistory(name)
       setHistory(historyRes.data)
+      refreshWorkouts()
     } catch {
       setError('Failed to delete set — try again')
     }
@@ -393,10 +404,10 @@ export default function ExerciseDetail() {
           <div className="flex gap-2">
             {isEditing ? (
               <>
-                <button onClick={handleSaveDraft} disabled={!canSave}
+                <button onClick={handleSaveDraft} disabled={!canSave || saving}
                   className="flex-1 bg-green-700 disabled:opacity-30 text-white font-semibold
                              py-3.5 rounded-xl active:scale-95 transition-all">
-                  Update
+                  {saving ? 'Saving…' : 'Update'}
                 </button>
                 <button onClick={handleDeleteSelected}
                   className="flex-1 bg-red-700 text-white font-semibold py-3.5
@@ -406,10 +417,10 @@ export default function ExerciseDetail() {
               </>
             ) : (
               <>
-                <button onClick={handleSaveDraft} disabled={!canSave}
+                <button onClick={handleSaveDraft} disabled={!canSave || saving}
                   className="flex-1 bg-green-700 disabled:opacity-30 text-white font-semibold
                              py-3.5 rounded-xl active:scale-95 transition-all">
-                  Save
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button onClick={handleClearDraft}
                   className="flex-1 bg-gray-800 border border-gray-700 text-gray-300 font-semibold
