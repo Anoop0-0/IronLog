@@ -1,0 +1,37 @@
+name: Keep API warm
+
+# Render's free tier stops the service after ~15 minutes without traffic,
+# and the next request pays the restart. Measured cold: 21.4s, against
+# ~0.3s warm — so the first action of any session hung for twenty seconds.
+#
+# Pinging on a schedule keeps it up. Deliberately not 24/7: a free Render
+# service has a monthly instance-hour allowance, and staying awake around
+# the clock would consume nearly all of it, leaving nothing if another
+# service is ever added. 00:00–19:00 UTC is 05:30–00:30 IST, which covers
+# any plausible gym hour and still parks the service overnight.
+#
+# GitHub's scheduled runs are best-effort and can be late, so an
+# occasional cold start will still slip through. This makes them rare
+# rather than guaranteed.
+
+on:
+  schedule:
+    - cron: '*/10 0-19 * * *'
+  workflow_dispatch:       # so it can be kicked manually
+
+jobs:
+  ping:
+    name: Ping /api/health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the API
+        run: |
+          # generous timeout: if this ping is the one paying the cold
+          # start, it needs to outlast the restart rather than fail and
+          # leave the service asleep for the next real request
+          code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 120 \
+            https://ironlog-api-eijv.onrender.com/api/health)
+          echo "HTTP $code"
+          cat /tmp/body
+          echo
+          test "$code" = "200"

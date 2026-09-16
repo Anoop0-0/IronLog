@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AuthContext } from "./auth-context";
+import { clearWorkoutsCache } from "../hooks/useWorkouts";
 
 //wrapping the whole app
 export function AuthProvider({children}){
@@ -10,6 +11,9 @@ export function AuthProvider({children}){
 
     //login function
     const login=(userData,authToken)=>{
+        // the cache is keyed to nothing but the browser, so a different
+        // account signing in here must not inherit the last one's list
+        clearWorkoutsCache();
         setUser(userData);
         setToken(authToken);
         localStorage.setItem("token",authToken);
@@ -18,6 +22,7 @@ export function AuthProvider({children}){
 
     //logout function
     const logout=()=>{
+        clearWorkoutsCache();
         setUser(null)
         setToken(null)
         localStorage.removeItem("token");
