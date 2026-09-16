@@ -5,7 +5,7 @@ import { useWorkouts }        from '../hooks/useWorkouts'
 import AppLayout              from '../components/layout/AppLayout'
 import WorkoutCard            from '../components/workout/WorkoutCard'
 import CalendarSheet          from '../components/workout/CalendarSheet'
-import { getActiveSession, toDayKey, formatDayKey } from '../utils/workoutDays'
+import { getActiveSession, toGymDayKey, formatDayKey } from '../utils/workoutDays'
 import { getBadgeAssignmentsByExercise } from '../utils/progressHelpers'
 
 function SkeletonCard() {
@@ -47,7 +47,7 @@ export default function Dashboard() {
   }, [workouts, today])
 
   const viewIndex = viewDay
-    ? pastWorkouts.findIndex(w => toDayKey(w.createdAt) === viewDay)
+    ? pastWorkouts.findIndex(w => toGymDayKey(w.createdAt) === viewDay)
     : -1
 
   const shown       = viewIndex >= 0 ? pastWorkouts[viewIndex] : today
@@ -68,7 +68,7 @@ export default function Dashboard() {
 
   const stepBack = () => {
     const next = pastWorkouts[viewIndex + 1]
-    if (next) setViewDay(toDayKey(next.createdAt))
+    if (next) setViewDay(toGymDayKey(next.createdAt))
   }
 
   const handleDelete = async (id) => {
@@ -89,7 +89,7 @@ export default function Dashboard() {
 
   const handlePickDay = (key, hasWorkout) => {
     setCalendarOpen(false)
-    if (today && toDayKey(today.createdAt) === key) { setViewDay(null); return }
+    if (today && toGymDayKey(today.createdAt) === key) { setViewDay(null); return }
     // a day you trained is shown right here; an empty one opens the
     // logger for that date, which is the point of picking it
     if (hasWorkout) setViewDay(key)

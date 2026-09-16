@@ -1,15 +1,9 @@
 import { useState, Fragment } from 'react'
 import { AchievementBadge } from './Achievement'
 import { standingAchievements } from '../../utils/progressHelpers'
+import { relativeDayLabel } from '../../utils/workoutDays'
 
-const formatDate = (iso) => {
-  const d = new Date(iso)
-  const today = new Date()
-  const diff = Math.floor((today - d) / 86400000)
-  if (diff === 0) return 'Today'
-  if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+const formatDate = (iso) => relativeDayLabel(iso)
 
 function ExerciseRow({ exercise, defaultExpanded = false, records }) {
   const [open, setOpen] = useState(defaultExpanded)

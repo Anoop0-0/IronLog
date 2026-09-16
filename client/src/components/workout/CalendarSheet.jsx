@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { groupByDay, toDayKey, buildMonthGrid } from '../../utils/workoutDays'
+import { groupByDay, todayKey as gymTodayKey, buildMonthGrid } from '../../utils/workoutDays'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
@@ -11,8 +11,13 @@ const MONTHS = [
 // z-[60], not z-50 — the fixed navbar sits at z-50 and renders later in
 // the DOM, so an equal z-index lets it paint over the bottom of the sheet.
 export default function CalendarSheet({ workouts, onPick, onClose }) {
-  const today    = new Date()
-  const todayKey = toDayKey(today)
+  // the gym day in progress, not the wall-clock date — between midnight
+  // and 4am the ring stays on the day you're still training, the month
+  // opens on that day's month, and the day that hasn't begun is greyed
+  // out (the server rejects it too)
+  const todayKey = gymTodayKey()
+  const [ty, tm, td] = todayKey.split('-').map(Number)
+  const today = new Date(ty, tm - 1, td)
 
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
 
