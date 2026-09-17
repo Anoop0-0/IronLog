@@ -5,27 +5,35 @@ import { validateSet, isNonEmptyString } from '../utils/validate.js'
 import { detectSetAchievements } from '../utils/achievements.js'
 import { parseTargetDate, dayWindow, createdAtForDay } from '../utils/targetDay.js'
 
-// every set ever logged for one exercise, flattened. Used to judge a new
-// set against its own past — callers must run this *before* saving the
-// new set, or it'll be compared against itself and never be a record.
-// Sets this new one is judged against. `upTo` is the target workout's own
-// timestamp, so a set logged against a past day is compared with what
-// came before THAT day rather than with everything ever logged —
-// otherwise catching up on a missed session could never earn the record
-// it actually earned. Its own workout is included (<=), which is what
-// makes earlier sets in the same session count, exactly as they do today.
-const getPreviousSetsForExercise = async (userId, exerciseName, upTo = null) => {
-  const query = { userId, 'exercises.name': exerciseName }
-  if (upTo) query.createdAt = { $lte: upTo }
+// Every workout that has ever contained this exercise, carrying only
+// that one exercise rather than the whole session.
+//
+// The projection matters as history grows: without it this pulled every
+// exercise of every matching workout across the wire — squats and rows
+// and everything else — to look at one lift's sets. $elemMatch returns
+// just the first match, and exercise names are unique within a workout.
+//
+// `upTo` only has to be an upper bound the caller can name before it
+// knows which workout the set is landing in, so that this can be issued
+// in parallel with that lookup instead of waiting on it. setsBefore()
+// applies the exact cutoff afterwards.
+const findExerciseWorkouts = (userId, exerciseName, upTo) =>
+  Workout.find(
+    { userId, 'exercises.name': exerciseName, createdAt: { $lte: upTo } },
+    { createdAt: 1, exercises: { $elemMatch: { name: exerciseName } } },
+  ).lean()
 
-  const workouts = await Workout.find(query).select('exercises')
-
-  return workouts.flatMap(w =>
-    w.exercises
-      .filter(ex => ex.name === exerciseName)
-      .flatMap(ex => ex.sets.map(s => ({ reps: s.reps, weight: s.weight })))
-  )
-}
+// Sets a new one is judged against, flattened. The cutoff is the target
+// workout's own timestamp, so a set logged against a past day is
+// compared with what came before THAT day rather than with everything
+// ever logged — otherwise catching up on a missed session could never
+// earn the record it actually earned. Its own workout is included (<=),
+// which is what makes earlier sets in the same session count.
+const setsBefore = (workouts, upTo) =>
+  workouts
+    .filter(w => w.createdAt <= upTo)
+    .flatMap(w => (w.exercises || []).flatMap(ex =>
+      ex.sets.map(s => ({ reps: s.reps, weight: s.weight }))))
 
 // The workout a set-level change applies to. Callers pass a target day
 // (local noon, see utils/targetDay.js); with none, it falls back to the
@@ -255,16 +263,31 @@ export const addSetToToday = async (req, res, next) => {
       return res.status(400).json({ message: setError })
     }
 
-    const target = await findWorkoutForDay(req.user._id, date)
+    // Saving a set was four database round trips deep, one after the
+    // next, and on a free instance whose database sits in another region
+    // each one is the dominant cost — the queries themselves are
+    // trivial. These two don't depend on each other: the record lookup
+    // only needs an upper bound, and the end of the target day is one it
+    // can have before the day's workout comes back.
+    const parsed = parseTargetDate(date)
+    if (parsed.error) return res.status(400).json({ message: parsed.error })
+
+    const [target, exerciseWorkouts] = await Promise.all([
+      findWorkoutForDay(req.user._id, date),
+      findExerciseWorkouts(
+        req.user._id, exerciseName,
+        parsed.date ? dayWindow(parsed.date).$lt : new Date(),
+      ),
+    ])
     if (target.error) return res.status(400).json({ message: target.error })
 
     const { workout, createdAt } = target
+    const performedAt = workout ? workout.createdAt : createdAt
 
-    // must run before the new set is saved, so it's judged against the
-    // sets that came before it rather than including itself
-    const previousSets = await getPreviousSetsForExercise(
-      req.user._id, exerciseName, workout ? workout.createdAt : createdAt
-    )
+    // the exact cutoff, applied now that we know which workout this set
+    // is landing in. Must be narrowed before the new set is saved, so
+    // it's judged against what came before rather than including itself.
+    const previousSets = setsBefore(exerciseWorkouts, performedAt)
 
     const cleanSet = {
       reps:   parseFloat(set.reps),
@@ -272,19 +295,20 @@ export const addSetToToday = async (req, res, next) => {
     }
     cleanSet.achievements = detectSetAchievements(previousSets, cleanSet.reps, cleanSet.weight)
 
-    let saved
-    if (!workout) {
-      saved = await Workout.create({
-        userId: req.user._id,
-        createdAt,
-        exercises: [{
-          name:     exerciseName,
-          bodyPart: bodyPart || '',
-          notes:    notes    || '',
-          sets:     [cleanSet],
-        }]
-      })
-    } else {
+    const persist = async () => {
+      if (!workout) {
+        return Workout.create({
+          userId: req.user._id,
+          createdAt,
+          exercises: [{
+            name:     exerciseName,
+            bodyPart: bodyPart || '',
+            notes:    notes    || '',
+            sets:     [cleanSet],
+          }]
+        })
+      }
+
       const existingEx = workout.exercises.find(ex => ex.name === exerciseName)
 
       if (existingEx) {
@@ -299,12 +323,19 @@ export const addSetToToday = async (req, res, next) => {
         })
       }
       await workout.save()
-      saved = workout
+      return workout
     }
 
-    await applyContestScore(
-      req.user._id, exerciseName, cleanSet.weight, cleanSet.reps, saved.createdAt
-    )
+    // The contest score touches a different collection and needs nothing
+    // the write produces — performedAt is known above — so it rides
+    // alongside rather than adding a round trip after it. Still awaited:
+    // a failure here should surface, not vanish.
+    const [saved] = await Promise.all([
+      persist(),
+      applyContestScore(
+        req.user._id, exerciseName, cleanSet.weight, cleanSet.reps, performedAt
+      ),
+    ])
 
     res.json(saved)
   } catch (err) {
