@@ -7,8 +7,8 @@ import { useWorkouts } from '../hooks/useWorkouts'
 import {
   getBadgeAssignmentsByExercise, standingAchievements,
 } from '../utils/progressHelpers'
-import { getTodayWorkout, getWorkoutForDay } from '../api/workouts.api'
-import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
+import { getWorkoutForDay } from '../api/workouts.api'
+import { todayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
 
 export default function WorkoutLogger() {
   const [exercises, setExercises] = useState([])
@@ -28,19 +28,18 @@ export default function WorkoutLogger() {
     [workouts]
   )
 
-  // ?date=YYYY-MM-DD logs against a past day; absent means today, which
-  // keeps the server on its rolling-24h window rather than pinning the
-  // session to a calendar date mid-workout
-  const dayKey    = params.get('date') || toDayKey(new Date())
+  // ?date=YYYY-MM-DD logs against a past day; absent means the gym day
+  // in progress. Either way the day is resolved here and sent explicitly
+  // — the client is the only side that knows the timezone, so leaving the
+  // server to infer "today" is what filed sets under the wrong date.
+  const dayKey     = params.get('date') || todayKey()
   const isTodayKey = isToday(dayKey)
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
       try {
-        const res = isTodayKey
-          ? await getTodayWorkout()
-          : await getWorkoutForDay(dayKeyToNoon(dayKey))
+        const res = await getWorkoutForDay(dayKeyToNoon(dayKey))
         setExercises(res.data ? res.data.exercises : [])
       } catch {
         setError('Failed to load that day\'s workout')

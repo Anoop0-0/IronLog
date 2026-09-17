@@ -4,7 +4,7 @@ import AppLayout      from '../components/layout/AppLayout'
 import WorkoutCard    from '../components/workout/WorkoutCard'
 import CalendarSheet  from '../components/workout/CalendarSheet'
 import { useWorkouts } from '../hooks/useWorkouts'
-import { getActiveSession, toDayKey, groupByDay } from '../utils/workoutDays'
+import { getActiveSession, toGymDayKey, groupByDay } from '../utils/workoutDays'
 
 const dayLabel = (key) => {
   const [y, m, d] = key.split('-').map(Number)
@@ -63,7 +63,7 @@ export default function History() {
     setCalendarOpen(false)
     // the active session isn't in this list — send those taps home,
     // where that workout actually lives
-    if (active && toDayKey(active.createdAt) === key && !byDay[key]) {
+    if (active && toGymDayKey(active.createdAt) === key && !byDay[key]) {
       navigate('/dashboard')
       return
     }

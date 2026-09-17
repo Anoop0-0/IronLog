@@ -10,6 +10,10 @@ import api from './axios'
 // running a cached older bundle keeps working until it updates.
 
 export const getWorkouts  = ()       => api.get('/workouts')
+// LEGACY — no screen calls this. "Today" on the server side means a
+// rolling 24h window, which is not the same thing as the gym day; use
+// getWorkoutForDay(dayKeyToNoon(todayKey())) instead. Kept only because
+// the route still has to answer cached older bundles.
 export const getTodayWorkout = ()    => api.get('/workouts/today')
 export const getWorkoutForDay = (date) => api.get('/workouts/day', { params: { date } })
 export const getExerciseHistory = (name) => api.get(`/workouts/exercise/${encodeURIComponent(name)}/history`)

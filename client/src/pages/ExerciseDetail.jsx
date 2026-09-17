@@ -5,7 +5,7 @@ import Stepper         from '../components/workout/Stepper'
 import TrendAreaChart  from '../components/charts/TrendAreaChart'
 import MultiLineChart  from '../components/charts/MultiLineChart'
 import {
-  getTodayWorkout, getWorkoutForDay, addSetToToday, updateSetInToday,
+  getWorkoutForDay, addSetToToday, updateSetInToday,
   deleteSetFromToday, updateExerciseNotes, deleteExerciseFromToday,
   getExerciseHistory,
 } from '../api/workouts.api'
@@ -21,17 +21,13 @@ import { useTimer } from '../hooks/useTimer'
 import { refreshWorkouts } from '../hooks/useWorkouts'
 import { AchievementBadge, AchievementBanner } from '../components/workout/Achievement'
 import { vibrate, ACHIEVEMENT } from '../utils/haptics'
-import { toDayKey, dayKeyToNoon, isToday, formatDayKey } from '../utils/workoutDays'
+import {
+  todayKey, dayKeyToNoon, isToday, formatDayKey, relativeDayLabel,
+} from '../utils/workoutDays'
 
 const TABS = ['Log', 'History', 'Graphs']
 
-const relativeDate = (iso) => {
-  const d = new Date(iso)
-  const diff = Math.floor((new Date() - d) / 86400000)
-  if (diff === 0) return 'Today'
-  if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+const relativeDate = (iso) => relativeDayLabel(iso)
 
 export default function ExerciseDetail() {
   const { exerciseName } = useParams()
@@ -41,12 +37,13 @@ export default function ExerciseDetail() {
   const { startRestTimer } = useTimer()
   const [params] = useSearchParams()
 
-  // ?date=YYYY-MM-DD edits a past day. `date` goes on every set-level
-  // call; leaving it undefined for today keeps the server on its rolling
-  // window instead of pinning a live session to a calendar date.
-  const dayKey     = params.get('date') || toDayKey(new Date())
+  // ?date=YYYY-MM-DD edits a past day; absent means the gym day in
+  // progress. `date` goes on every set-level call, today included —
+  // only the client knows the timezone, and letting the server infer the
+  // day is what appended today's sets to yesterday's workout.
+  const dayKey     = params.get('date') || todayKey()
   const isTodayKey = isToday(dayKey)
-  const date       = isTodayKey ? undefined : dayKeyToNoon(dayKey)
+  const date       = dayKeyToNoon(dayKey)
   const backHref   = isTodayKey ? '/log' : `/log?date=${dayKey}`
 
   const [bodyPart,  setBodyPart]  = useState(location.state?.bodyPart || '')
@@ -83,7 +80,7 @@ export default function ExerciseDetail() {
     const load = async () => {
       try {
         const [todayRes, historyRes] = await Promise.all([
-          isTodayKey ? getTodayWorkout() : getWorkoutForDay(dayKeyToNoon(dayKey)),
+          getWorkoutForDay(dayKeyToNoon(dayKey)),
           getExerciseHistory(name),
         ])
 

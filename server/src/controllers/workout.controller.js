@@ -3,7 +3,7 @@ import { getTodayWindowStart } from '../utils/dateWindow.js'
 import { applyContestScore, applyContestScoresForExercises } from '../utils/contestScoring.js'
 import { validateSet, isNonEmptyString } from '../utils/validate.js'
 import { detectSetAchievements } from '../utils/achievements.js'
-import { parseTargetDate, dayWindow } from '../utils/targetDay.js'
+import { parseTargetDate, dayWindow, createdAtForDay } from '../utils/targetDay.js'
 
 // every set ever logged for one exercise, flattened. Used to judge a new
 // set against its own past — callers must run this *before* saving the
@@ -28,8 +28,8 @@ const getPreviousSetsForExercise = async (userId, exerciseName, upTo = null) => 
 }
 
 // The workout a set-level change applies to. Callers pass a target day
-// (local noon, see utils/targetDay.js); with none, it's the rolling
-// "today" window the app has always used.
+// (local noon, see utils/targetDay.js); with none, it falls back to the
+// legacy rolling window, which only a stale client bundle still hits.
 //
 // Returns { workout, createdAt } — workout is null when the day has
 // nothing logged yet, and createdAt is the timestamp a new one should
@@ -41,19 +41,21 @@ const findWorkoutForDay = async (userId, rawDate) => {
   if (!parsed.date) {
     const workout = await Workout.findOne({
       userId,
-      createdAt: { $gte: getTodayWindowStart() },
+      // bounded at both ends: an unbounded $gte sorted newest-first would
+      // hand back a future-dated workout ahead of the real one
+      createdAt: { $gte: getTodayWindowStart(), $lte: new Date() },
     }).sort({ createdAt: -1 })
     return { workout, createdAt: new Date() }
   }
 
-  // an existing workout anywhere in that local day wins, so a second set
+  // an existing workout anywhere in that gym day wins, so a second set
   // logged for Sep 8 joins the first rather than starting a rival entry
   const workout = await Workout.findOne({
     userId,
     createdAt: dayWindow(parsed.date),
   }).sort({ createdAt: -1 })
 
-  return { workout, createdAt: parsed.date }
+  return { workout, createdAt: createdAtForDay(parsed.date) }
 }
 
 // ── get all workouts for logged in user ───────────────
@@ -81,12 +83,15 @@ export const getWorkoutForDay = async (req, res, next) => {
   }
 }
 
-// ── get just today's (rolling 24h) workout ────────────
+// ── LEGACY: today's workout by the rolling 24h window ─
+// Superseded by getWorkoutForDay, which the app now calls for every day
+// including today. Kept so a cached older bundle keeps working; see
+// utils/dateWindow.js for why the rolling window was wrong.
 export const getTodayWorkout = async (req, res, next) => {
   try {
     const workout = await Workout.findOne({
       userId:    req.user._id,
-      createdAt: { $gte: getTodayWindowStart() }
+      createdAt: { $gte: getTodayWindowStart(), $lte: new Date() }
     }).sort({ createdAt: -1 })
 
     res.json(workout || null)

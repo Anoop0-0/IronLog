@@ -2,44 +2,97 @@ import { describe, it, expect } from 'vitest'
 import {
   getActiveSession,
   toDayKey,
+  toGymDayKey,
+  todayKey,
   groupByDay,
   buildMonthGrid,
-  TODAY_WINDOW_MS,
   dayKeyToNoon,
   isToday,
   formatDayKey,
+  relativeDayLabel,
 } from './workoutDays'
 
 const workout = (createdAt, _id = createdAt) => ({ _id, createdAt, exercises: [] })
+const local = (...args) => new Date(...args)
+
+describe('toGymDayKey', () => {
+  it('reads a normal daytime session as its own date', () => {
+    expect(toGymDayKey(local(2026, 8, 15, 10, 23))).toBe('2026-09-15')
+  })
+
+  it('keeps a session that ran past midnight on the day it started', () => {
+    // finished at 00:30 Tuesday after starting 11pm Monday — one session,
+    // and it belongs to Monday
+    expect(toGymDayKey(local(2026, 8, 15, 0, 30))).toBe('2026-09-14')
+  })
+
+  it('rolls over at 4am, not midnight', () => {
+    expect(toGymDayKey(local(2026, 8, 15, 3, 59))).toBe('2026-09-14')
+    expect(toGymDayKey(local(2026, 8, 15, 4, 0))).toBe('2026-09-15')
+  })
+})
 
 describe('getActiveSession', () => {
-  const now = new Date('2026-09-15T20:00:00').getTime()
+  const now = local(2026, 8, 15, 20, 0).getTime()
 
-  it('returns the workout inside the rolling 24h window', () => {
-    const w = workout(new Date(now - 3 * 60 * 60 * 1000).toISOString())
+  it("returns today's session", () => {
+    const w = workout(local(2026, 8, 15, 17, 0).toISOString())
     expect(getActiveSession([w], now)).toBe(w)
   })
 
-  it('returns null when the newest workout has fallen outside the window', () => {
-    const old = workout(new Date(now - TODAY_WINDOW_MS - 1000).toISOString())
-    expect(getActiveSession([old], now)).toBeNull()
+  it("does not treat yesterday's session as today's", () => {
+    // the bug this replaces: trained 10:23am yesterday, and at 10:10am
+    // today the home screen still called it "today" — so the next set
+    // logged was appended to yesterday's workout
+    const yesterdayMorning = local(2026, 8, 14, 23, 0).toISOString()
+    expect(getActiveSession([workout(yesterdayMorning)], now)).toBeNull()
   })
 
-  it('still finds a late-night session from the previous calendar day', () => {
-    // trained 11pm "yesterday", it is now 8pm today -> 21h ago, still
-    // the session the server would append to
-    const lateNight = workout(new Date(now - 21 * 60 * 60 * 1000).toISOString())
-    expect(getActiveSession([lateNight], now)).toBe(lateNight)
+  it('stays on the same session through midnight', () => {
+    // 00:30, still mid-workout from an 11pm start
+    const at0030 = local(2026, 8, 15, 0, 30).getTime()
+    const started = workout(local(2026, 8, 14, 23, 0).toISOString())
+    expect(getActiveSession([started], at0030)).toBe(started)
   })
 
-  it('picks the newest when several sit inside the window', () => {
-    const older = workout(new Date(now - 10 * 60 * 60 * 1000).toISOString(), 'older')
-    const newer = workout(new Date(now - 1 * 60 * 60 * 1000).toISOString(), 'newer')
+  it('ignores a future-dated workout', () => {
+    // same gym day, but ahead of the clock — never the one you're
+    // logging into, and newest-first sorting would otherwise pick it
+    const ahead = workout(local(2026, 8, 15, 23, 0).toISOString())
+    expect(getActiveSession([ahead], now)).toBeNull()
+  })
+
+  it('picks the newest when several sit on the same day', () => {
+    const older = workout(local(2026, 8, 15, 10, 0).toISOString(), 'older')
+    const newer = workout(local(2026, 8, 15, 19, 0).toISOString(), 'newer')
     expect(getActiveSession([older, newer], now)._id).toBe('newer')
   })
 
   it('returns null for no workouts', () => {
     expect(getActiveSession([], now)).toBeNull()
+  })
+})
+
+describe('relativeDayLabel', () => {
+  const now = local(2026, 8, 16, 10, 10).getTime()
+
+  it('names the day rather than counting elapsed hours', () => {
+    // 23.8 hours earlier, but a different day — the old elapsed-ms
+    // version called this "Today"
+    expect(relativeDayLabel(local(2026, 8, 15, 10, 23), now)).toBe('Yesterday')
+  })
+
+  it('calls the current gym day Today', () => {
+    expect(relativeDayLabel(local(2026, 8, 16, 9, 0), now)).toBe('Today')
+  })
+
+  it('does not call a two-day-old workout Yesterday', () => {
+    // 46 hours earlier: one floor-divided day, but two calendar days
+    expect(relativeDayLabel(local(2026, 8, 14, 12, 0), now)).toBe('Sep 14')
+  })
+
+  it('labels a past-midnight session with the day it started', () => {
+    expect(relativeDayLabel(local(2026, 8, 15, 0, 30), now)).toBe('Sep 14')
   })
 })
 
@@ -68,6 +121,13 @@ describe('groupByDay', () => {
     const a = workout(new Date(2026, 8, 14, 7).toISOString(), 'a')
     const b = workout(new Date(2026, 8, 14, 19).toISOString(), 'b')
     expect(groupByDay([a, b])['2026-09-14']).toHaveLength(2)
+  })
+
+  it('files a past-midnight session under the day it started', () => {
+    // history and the calendar have to agree with the home screen, or a
+    // session shows on one date and is called another
+    const lateNight = workout(new Date(2026, 8, 15, 0, 30).toISOString(), 'late')
+    expect(Object.keys(groupByDay([lateNight]))).toEqual(['2026-09-14'])
   })
 
   it('returns an empty object for no workouts', () => {
@@ -126,7 +186,9 @@ describe('dayKeyToNoon', () => {
 
 describe('isToday / formatDayKey', () => {
   it('recognises today', () => {
-    expect(isToday(toDayKey(new Date()))).toBe(true)
+    // todayKey(), not toDayKey(new Date()) — those differ between
+    // midnight and 4am, which would make this pass or fail by clock
+    expect(isToday(todayKey())).toBe(true)
     expect(isToday('2020-01-01')).toBe(false)
   })
 

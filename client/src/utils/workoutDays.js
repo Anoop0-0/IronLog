@@ -1,33 +1,50 @@
 // Day-bucketing helpers for the home screen's "today" card, the history
 // list, and the calendar picker.
 //
-// There are two different notions of "today" in play and they are NOT
-// interchangeable:
+// ONE definition of a day, used by every screen and mirrored on the
+// server (see server utils/targetDay.js): the GYM DAY, running
+// 04:00 -> 04:00 rather than midnight to midnight.
 //
-//   1. The server's rolling 24-hour window (see server dateWindow.js).
-//     This is what /workouts/today and every addSetToToday call use, so
-//     it decides which workout your next logged set lands in.
-//   2. The calendar date a workout was started on. This is what a
-//     calendar grid means when you tap "Sep 12".
+// It used to be two definitions — a rolling 24-hour window for "today"
+// and the calendar date everywhere else — and they disagreed constantly.
+// Train at 10:23am on Monday and at 10:10am Tuesday the home screen still
+// called Monday's session "today", so the next set logged was appended to
+// Monday's workout and then appeared under Monday in history and the
+// calendar. Thirteen minutes later the same session silently stopped
+// being today's. The rolling window existed because the server couldn't
+// know the user's timezone; dayKeyToNoon solved that, and this replaces
+// the workaround.
 //
-// They disagree for late-night sessions: train at 11pm Monday, and at
-// 12:30am Tuesday the server still treats Monday's workout as the one
-// you're logging into. So the home screen keys off (1) — otherwise it
-// would claim "nothing logged today" while the Log tab is happily
-// appending to a session — and the history/calendar views key off (2),
-// which is what a date on a calendar actually means.
+// The 4am boundary keeps the one case the rolling window got right: a
+// session that starts at 11pm and finishes after midnight stays a single
+// workout on the day it started.
+export const GYM_DAY_START_HOUR = 4
 
-export const TODAY_WINDOW_MS = 24 * 60 * 60 * 1000
+const GYM_DAY_OFFSET_MS = GYM_DAY_START_HOUR * 60 * 60 * 1000
 
-// The workout the next logged set would go into, matching the server's
-// rolling window. At most one exists, since the server only creates a
-// new workout once the previous one falls outside the window.
+// Which gym day a moment belongs to. Shifting back by the boundary and
+// then taking the local date is all there is to it: 00:30 on Tuesday
+// becomes 20:30 Monday, and so reads as Monday.
+export const toGymDayKey = (dateLike) =>
+  toDayKey(new Date(new Date(dateLike).getTime() - GYM_DAY_OFFSET_MS))
+
+// The gym day currently in progress — what every screen means by "today".
+export const todayKey = (now = Date.now()) => toGymDayKey(now)
+
+// The workout the next logged set would go into: the one belonging to the
+// gym day in progress. At most one exists, since the server joins further
+// sets to it rather than starting a rival entry.
 export const getActiveSession = (workouts, now = Date.now()) => {
-  const cutoff = now - TODAY_WINDOW_MS
-  const inWindow = workouts.filter(w => new Date(w.createdAt).getTime() >= cutoff)
-  if (inWindow.length === 0) return null
+  const key = todayKey(now)
+  const today = workouts.filter(w =>
+    toGymDayKey(w.createdAt) === key &&
+    // a future timestamp is never the session you're logging into, and
+    // sorting newest-first would otherwise let one win
+    new Date(w.createdAt).getTime() <= now
+  )
+  if (today.length === 0) return null
   // newest first, in case the list isn't sorted
-  return inWindow.reduce((newest, w) =>
+  return today.reduce((newest, w) =>
     new Date(w.createdAt) > new Date(newest.createdAt) ? w : newest
   )
 }
@@ -42,13 +59,14 @@ export const toDayKey = (dateLike) => {
   return `${d.getFullYear()}-${month}-${day}`
 }
 
-// { 'YYYY-MM-DD': [workout, ...] } — a day can hold more than one
-// workout (the rolling window can roll over within a single calendar
-// day), so the value is always an array.
+// { 'YYYY-MM-DD': [workout, ...] } — keyed by gym day, so history and
+// the calendar file a session on the same day the home screen calls it.
+// Still an array per day: older data can hold more than one workout on a
+// day, from back when the rolling window could roll over within one.
 export const groupByDay = (workouts) => {
   const days = {}
   workouts.forEach(w => {
-    const key = toDayKey(w.createdAt)
+    const key = toGymDayKey(w.createdAt)
     if (!days[key]) days[key] = []
     days[key].push(w)
   })
@@ -83,7 +101,7 @@ export const dayKeyToNoon = (dayKey) => {
   return new Date(year, month - 1, day, 12, 0, 0, 0).toISOString()
 }
 
-export const isToday = (dayKey) => dayKey === toDayKey(new Date())
+export const isToday = (dayKey) => dayKey === todayKey()
 
 // human label for a day key, e.g. 'Monday, Sep 8'
 export const formatDayKey = (dayKey) => {
@@ -91,4 +109,23 @@ export const formatDayKey = (dayKey) => {
   return new Date(year, month - 1, day).toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric',
   })
+}
+
+// 'Today' / 'Yesterday' / 'Sep 8' for a workout's timestamp.
+//
+// Compares which DAY each moment falls in, never how many hours apart
+// they are. The old version did `Math.floor((now - then) / 86400000)`,
+// which made a session from 8pm last night read "Today" at 10am, and one
+// from 46 hours ago read "Yesterday" — the label drifted with the clock
+// instead of naming the day.
+export const relativeDayLabel = (dateLike, now = Date.now()) => {
+  const key = toGymDayKey(dateLike)
+  if (key === todayKey(now)) return 'Today'
+  if (key === todayKey(now - 24 * 60 * 60 * 1000)) return 'Yesterday'
+
+  // from the key's own parts, so the label names the gym day rather than
+  // the wall-clock date of a session that ran past midnight
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
