@@ -29,6 +29,32 @@ const findExerciseWorkouts = (userId, exerciseName, upTo) =>
 // ever logged — otherwise catching up on a missed session could never
 // earn the record it actually earned. Its own workout is included (<=),
 // which is what makes earlier sets in the same session count.
+// Persist a workout after sets or exercises have been taken out of it,
+// dropping it entirely once there is nothing left.
+//
+// An exercise with no sets, or a workout with no exercises, is not an
+// empty session — it is a leftover, and it isn't invisible: the calendar
+// draws a workout dot on that day, history renders a blank card, and
+// "Previous workout" steps onto nothing. Deleting every set you logged
+// left the app still insisting you trained.
+//
+// Returns the workout, or null when it was removed. Callers hand that
+// straight to res.json, so the client can tell the two apart.
+//
+// Exported for its test: it only touches workout.exercises, .save() and
+// .deleteOne(), so a stub pins the real behaviour rather than a copy of
+// it restated in the test file.
+export const saveOrRemoveIfEmpty = async (workout) => {
+  workout.exercises = workout.exercises.filter(ex => ex.sets.length > 0)
+
+  if (workout.exercises.length === 0) {
+    await workout.deleteOne()
+    return null
+  }
+  await workout.save()
+  return workout
+}
+
 const setsBefore = (workouts, upTo) =>
   workouts
     .filter(w => w.createdAt <= upTo)
@@ -240,9 +266,12 @@ export const updateWorkout = async (req, res, next) => {
     }))
 
     workout.exercises = cleanedExercises
-    await workout.save()
 
-    res.json(workout)
+    // The edit form can delete a set at a time, so it can empty an
+    // exercise and then the whole workout. saveOrRemoveIfEmpty prunes
+    // the exercises that are left with no sets and removes the workout
+    // if that accounts for all of them.
+    res.json(await saveOrRemoveIfEmpty(workout))
   } catch (err) {
     next(err)
   }
@@ -426,14 +455,9 @@ export const deleteSetFromToday = async (req, res, next) => {
       return res.status(404).json({ message: 'Set not found' })
     }
 
-    // deleting the last set leaves an exercise with nothing in it — drop
-    // the whole entry rather than keep an empty exercise around
-    if (exercise.sets.length === 0) {
-      workout.exercises = workout.exercises.filter(ex => ex.name !== exerciseName)
-    }
-
-    await workout.save()
-    res.json(workout)
+    // deleting the last set drops the exercise, and the last exercise
+    // drops the workout — otherwise the day keeps claiming a session
+    res.json(await saveOrRemoveIfEmpty(workout))
   } catch (err) {
     next(err)
   }
@@ -494,8 +518,8 @@ export const deleteExerciseFromToday = async (req, res, next) => {
       return res.status(404).json({ message: 'Exercise not found in that workout' })
     }
 
-    await workout.save()
-    res.json(workout)
+    // removing the only exercise leaves nothing worth keeping
+    res.json(await saveOrRemoveIfEmpty(workout))
   } catch (err) {
     next(err)
   }

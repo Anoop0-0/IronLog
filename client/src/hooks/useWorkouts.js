@@ -90,9 +90,14 @@ export function useWorkouts() {
     removeWorkout(id)
   }
 
+  // The server removes a workout that has been edited down to nothing
+  // rather than keeping an empty one, and answers with null when it
+  // does. Without this branch that null reached replaceWorkout and threw
+  // on `updated._id`, turning a successful delete into an error banner.
   const updateById = async (id, exercises) => {
     const res = await updateWorkout(id, { exercises })
-    replaceWorkout(res.data)
+    if (res.data) replaceWorkout(res.data)
+    else removeWorkout(id)
   }
 
   return {
