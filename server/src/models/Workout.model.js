@@ -27,4 +27,11 @@ const workoutSchema=new mongoose.Schema({
 // as workout history grows
 workoutSchema.index({ userId: 1, createdAt: -1 })
 
+// the record lookup on every saved set, and the per-exercise history
+// screen. Multikey on exercises.name. Without it, judging one set means
+// walking every workout the user has ever logged — invisible at four
+// workouts, and squarely on the path that has to feel instant at four
+// hundred.
+workoutSchema.index({ userId: 1, 'exercises.name': 1, createdAt: -1 })
+
 export default mongoose.model('Workout',workoutSchema)

@@ -10,10 +10,15 @@ name: Keep API warm
 # service is ever added. 00:00–19:00 UTC is 05:30–00:30 IST, which covers
 # any plausible gym hour and still parks the service overnight.
 #
-# Points at the Singapore service. The API used to run in Oregon while its
-# database sits in Mumbai, so every query crossed the Pacific twice;
-# measured after moving, health went ~0.29-0.76s -> ~0.12-0.29s and a
-# DB-backed route ~0.50-0.56s -> ~0.18-0.35s.
+# The API pinged is whichever one the deployed app actually calls, read
+# out of the live bundle rather than written down here. Hardcoding it
+# went wrong once already: this was pointed at the new Singapore service
+# while VITE_API_URL still sent the app to Oregon, so the service every
+# request hit was the one service nothing was keeping awake, and users
+# paid a cold start that the workflow's green ticks hid completely.
+#
+# Only one service is pinged, deliberately — a free account's monthly
+# instance-hour allowance does not cover two kept awake all day.
 #
 # GitHub's scheduled runs are best-effort and can be late, so an
 # occasional cold start will still slip through. This makes them rare
@@ -29,13 +34,32 @@ jobs:
     name: Ping /api/health
     runs-on: ubuntu-latest
     steps:
+      - name: Find the API the live app calls
+        id: api
+        run: |
+          set -o pipefail
+          app=https://iron-log-anoop0-0s-projects.vercel.app
+          bundle=$(curl -sf --max-time 30 "$app/" \
+            | grep -o '/assets/index-[A-Za-z0-9_-]*\.js' | head -1)
+          base=$(curl -sf --max-time 30 "$app$bundle" \
+            | grep -o 'https://[a-z0-9.-]*\.onrender\.com/api' | head -1)
+
+          # a failed scrape must not silently stop pinging: fall back to
+          # the last known service and say so loudly in the log
+          if [ -z "$base" ]; then
+            base=https://ironlog-hgm2.onrender.com/api
+            echo "::warning::could not read the API URL from the bundle; using $base"
+          fi
+          echo "url=$base/health" >> "$GITHUB_OUTPUT"
+          echo "pinging $base/health"
+
       - name: Wake the API
         run: |
           # generous timeout: if this ping is the one paying the cold
           # start, it needs to outlast the restart rather than fail and
           # leave the service asleep for the next real request
           code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 120 \
-            https://ironlog-hgm2.onrender.com/api/health)
+            '${{ steps.api.outputs.url }}')
           echo "HTTP $code"
           cat /tmp/body
           echo
